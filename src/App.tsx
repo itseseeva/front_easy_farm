@@ -82,21 +82,6 @@ export const App: React.FC = () => {
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
   const [currentCastingSlot, setCurrentCastingSlot] = useState<number | null>(null);
 
-  // Sync icons from Python backend on initial mount
-  useEffect(() => {
-    if (!window.pywebview) return; // в превью AI Studio бэкенда нет — это нормально
-    window.pywebview.api.get_saved_icons().then((icons) => {
-      if (!icons || Object.keys(icons).length === 0) return;
-      setCatalog(prev =>
-        prev.map(skill =>
-          skill.customIcon ? skill : { ...skill, customIcon: icons[skill.id] ?? skill.customIcon }
-        )
-      );
-    }).catch((err) => {
-      console.warn('get_saved_icons: не удалось получить иконки', err);
-    });
-  }, []); // пустой массив зависимостей — вызываем один раз при монтировании
-
   // Auto-dismiss notifications
   useEffect(() => {
     if (successMessage) {
@@ -352,15 +337,14 @@ export const App: React.FC = () => {
       }))
     );
 
-    // Call window.pywebview.api.save_icon(slot, dataUrl) immediately after file selection
-    const boundSlot = slots.find(s => s.skill?.id === skillId);
-    const slotKey = boundSlot ? boundSlot.key : skillId;
-
+    // Call window.pywebview.api.save_icon(skillId, dataUrl) immediately after file selection.
+    // Имя файла на диске = id скилла (а не текущий боевой слот), чтобы путь был стабильным
+    // независимо от того, куда скилл перетащен в интерфейсе.
     if (window.pywebview) {
       try {
-        const res = await window.pywebview.api.save_icon(slotKey, base64);
+        const res = await window.pywebview.api.save_icon(skillId, base64);
         if (res.ok) {
-          setSuccessMessage(`Иконка для слота [${slotKey}] успешно сохранена`);
+          setSuccessMessage(`Иконка для «${skillId}» успешно сохранена`);
         } else if (res.error) {
           setErrorMessage(`Ошибка сохранения иконки: ${res.error}`);
         }

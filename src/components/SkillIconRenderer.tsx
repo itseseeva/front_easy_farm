@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActiveSkill } from '../data/skillsLibrary';
 import { Camera } from 'lucide-react';
 
@@ -15,6 +15,10 @@ export const SkillIconRenderer: React.FC<Props> = ({
   showLevel = false,
   onUploadImage
 }) => {
+  // Файл на диске мог не загрузиться (первый запуск на новом компьютере,
+  // очищенный localStorage, файл ещё не сохранён) — тогда падаем на SVG-заглушку.
+  const [diskIconFailed, setDiskIconFailed] = useState(false);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onUploadImage) {
@@ -32,9 +36,16 @@ export const SkillIconRenderer: React.FC<Props> = ({
     }
   };
 
+  // Прямой относительный путь к иконке на диске. Работает через file://
+  // без похода в Python-мост: dist/index.html и src/config/icons лежат
+  // в одном корне проекта, относительные пути (в т.ч. "../") разрешаются
+  // движком WebView2 так же, как в обычном браузере.
+  const diskIconPath = `../src/config/icons/${skill.id}.png`;
+  const showDiskIcon = !skill.customIcon && !diskIconFailed;
+
   return (
     <div className={`relative rounded-lg overflow-hidden border border-[#2c3140] bg-[#13151d] group flex flex-col justify-between shadow-inner select-none ${className}`}>
-      {/* If custom user-uploaded image is present */}
+      {/* Приоритет 1: фото, уже загруженное и сохранённое в состоянии этой сессии */}
       {skill.customIcon ? (
         <img
           src={skill.customIcon}
@@ -42,8 +53,17 @@ export const SkillIconRenderer: React.FC<Props> = ({
           draggable={false}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
         />
+      ) : showDiskIcon ? (
+        /* Приоритет 2: файл, ранее сохранённый на диск (переживает переустановку/сброс localStorage) */
+        <img
+          src={diskIconPath}
+          alt={skill.name}
+          draggable={false}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+          onError={() => setDiskIconFailed(true)}
+        />
       ) : (
-        /* Themed SVG artwork tailored to the skill */
+        /* Приоритет 3: процедурная SVG-заглушка, если ничего не найдено */
         <div className="absolute inset-0 flex items-center justify-center p-1.5 overflow-hidden pointer-events-none select-none">
           <RenderSkillArtwork svgType={skill.svgType} color={skill.color} />
         </div>
