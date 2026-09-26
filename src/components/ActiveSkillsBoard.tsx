@@ -8,7 +8,7 @@ export interface PlacedSlot {
   slotIndex: number; // 0 to 11
   key: string;       // "1", "2", ... "="
   combo: string;     // "RB+X", etc.
-  cooldown: number;  // 8.0
+  cooldown?: number; // legacy optional (deprecated)
   skill: ActiveSkill | null;
 }
 

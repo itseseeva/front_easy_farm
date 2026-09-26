@@ -49,7 +49,6 @@ export const App: React.FC = () => {
       slotIndex: idx,
       key: def.slot,
       combo: def.combo,
-      cooldown: def.defaultCooldown,
       skill: INITIAL_CATALOG[idx] || null
     }));
   });
@@ -191,8 +190,7 @@ export const App: React.FC = () => {
         slotIndex: idx + 1,
         combo: s.combo,
         skillId: s.skill ? s.skill.id : null,
-        skillName: s.skill ? s.skill.name : "None",
-        cooldown: s.cooldown
+        skillName: s.skill ? s.skill.name : "None"
       })),
       "totalChains": chains.length,
       "chains": chains.map(chain => ({

@@ -40,6 +40,16 @@ export const ComboSequence: React.FC<Props> = ({
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
 
+  // Only the skills that are currently assigned to the 12 battle panel slots
+  const activePanelSkills: ActiveSkill[] = [];
+  const seenSkillIds = new Set<string>();
+  for (const slot of slots) {
+    if (slot.skill && !seenSkillIds.has(slot.skill.id)) {
+      seenSkillIds.add(slot.skill.id);
+      activePanelSkills.push(slot.skill);
+    }
+  }
+
   // Set of all skill IDs currently placed in any chain
   const placedSkillIds = new Set<string>();
   chains.forEach(chain => {
@@ -275,7 +285,7 @@ export const ComboSequence: React.FC<Props> = ({
     if (!item) return;
 
     if (item.type === 'catalog') {
-      const skill = catalog.find(s => s.id === item.skillId);
+      const skill = activePanelSkills.find(s => s.id === item.skillId) || catalog.find(s => s.id === item.skillId);
       if (skill) {
         const updated = chains.map(c => {
           return {
@@ -636,7 +646,7 @@ export const ComboSequence: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Catalog of Available Skills (24 skills) */}
+      {/* Catalog of Available Skills (Only skills from the 12 battle panel slots) */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -654,60 +664,67 @@ export const ComboSequence: React.FC<Props> = ({
         <div className="flex items-center justify-between mb-2 pointer-events-none">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-gray-300 uppercase tracking-wider">
-              Доступные умения
+              Умения с боевой панели
             </span>
             <span className="text-[10px] text-gray-500 font-mono">
-              (перетащите в квадратик)
+              ({activePanelSkills.length} на панели)
             </span>
           </div>
-          <span className="text-[10px] text-gray-500">
-            {24 - placedSkillIds.size} свободно
+          <span className="text-[10px] text-gray-500 font-mono">
+            {Math.max(0, activePanelSkills.length - placedSkillIds.size)} свободно
           </span>
         </div>
 
-        {/* 4 rows of 6 skills matching the board exactly */}
-        <div className="grid grid-cols-6 gap-1.5">
-          {catalog.map((skill) => {
-            const isPlaced = placedSkillIds.has(skill.id);
-            const isSelected = selectedCatalogSkill?.id === skill.id;
+        {activePanelSkills.length === 0 ? (
+          <div className="py-6 text-center text-xs text-gray-500 font-sans border border-dashed border-[#232734] rounded-lg">
+            На боевой панели нет активных умений. Сначала разместите умения на вкладке «Умения».
+          </div>
+        ) : (
+          <div className="grid grid-cols-6 gap-1.5">
+            {activePanelSkills.map((skill) => {
+              const isPlaced = placedSkillIds.has(skill.id);
+              const isSelected = selectedCatalogSkill?.id === skill.id;
 
-            if (isPlaced) {
+              if (isPlaced) {
+                return (
+                  <div
+                    key={skill.id}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (activeDrag?.type === 'step') setIsOverCatalog(true);
+                    }}
+                    onDrop={handleDropOnCatalog}
+                    className="aspect-square rounded border border-[#1b1e28] bg-[#0c0d12] opacity-25"
+                    title={`${skill.name} (уже в комбо)`}
+                  />
+                );
+              }
+
               return (
                 <div
                   key={skill.id}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (activeDrag?.type === 'step') setIsOverCatalog(true);
-                  }}
-                  onDrop={handleDropOnCatalog}
-                  className="aspect-square rounded border border-[#1b1e28] bg-[#0c0d12] opacity-25"
-                />
+                  draggable
+                  onDragStart={(e) => handleDragStartFromCatalog(e, skill)}
+                  onDragEnd={handleDragEnd}
+                  onClick={() => setSelectedCatalogSkill(selectedCatalogSkill?.id === skill.id ? null : skill)}
+                  className={`aspect-square rounded p-0.5 relative cursor-pointer hover:border-[#4d566b] transition bg-[#171922] border ${
+                    isSelected ? 'ring-2 ring-gray-200 border-white' : 'border-[#272b38]'
+                  }`}
+                  title={`${skill.name} (${skill.defaultCooldown}с)`}
+                >
+                  <SkillIconRenderer
+                    skill={skill}
+                    showLevel={false}
+                    onUploadImage={onUploadImage}
+                  />
+                </div>
               );
-            }
-
-            return (
-              <div
-                key={skill.id}
-                draggable
-                onDragStart={(e) => handleDragStartFromCatalog(e, skill)}
-                onDragEnd={handleDragEnd}
-                onClick={() => setSelectedCatalogSkill(selectedCatalogSkill?.id === skill.id ? null : skill)}
-                className={`aspect-square rounded p-0.5 relative cursor-pointer hover:border-[#4d566b] transition bg-[#171922] border ${
-                  isSelected ? 'ring-2 ring-gray-200 border-white' : 'border-[#272b38]'
-                }`}
-              >
-                <SkillIconRenderer
-                  skill={skill}
-                  showLevel={false}
-                  onUploadImage={onUploadImage}
-                />
-              </div>
-            );
-          })}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Skill Picker Modal for empty combo step click */}
+      {/* Skill Picker Modal for empty combo step click - filtered strictly to battle panel skills */}
       <SkillPickerModal
         isOpen={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
@@ -717,8 +734,8 @@ export const ComboSequence: React.FC<Props> = ({
             ? `Выбор умения для шага #${pickerTarget.stepIndex}`
             : 'Выбор умения'
         }
-        subtitle="Нажмите на умение, чтобы добавить его в этот шаг цепочки"
-        catalog={catalog}
+        subtitle="Нажмите на умение с боевой панели, чтобы добавить его в этот шаг"
+        catalog={activePanelSkills}
         placedSkillIds={placedSkillIds}
         onUploadImage={onUploadImage}
       />

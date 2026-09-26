@@ -262,36 +262,19 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
 
 // Bottom bar slots keys matching the 12 keys of T&L
 export const DEFAULT_HOTKEY_SLOTS = [
-  { slot: "1", combo: "RB+X", defaultCooldown: 8.0 },
-  { slot: "2", combo: "RB+Y", defaultCooldown: 8.0 },
-  { slot: "3", combo: "RB+B", defaultCooldown: 8.0 },
-  { slot: "4", combo: "RB+A", defaultCooldown: 8.0 },
-  { slot: "5", combo: "RT+X", defaultCooldown: 8.0 },
-  { slot: "6", combo: "RT+Y", defaultCooldown: 8.0 },
-  { slot: "7", combo: "RT+B", defaultCooldown: 8.0 },
-  { slot: "8", combo: "RT+A", defaultCooldown: 8.0 },
-  { slot: "9", combo: "RT+DPAD_LEFT", defaultCooldown: 8.0 },
-  { slot: "0", combo: "RT+DPAD_UP", defaultCooldown: 8.0 },
-  { slot: "-", combo: "RT+DPAD_RIGHT", defaultCooldown: 8.0 },
-  { slot: "=", combo: "RT+DPAD_DOWN", defaultCooldown: 8.0 }
+  { slot: "1", combo: "RB+X" },
+  { slot: "2", combo: "RB+Y" },
+  { slot: "3", combo: "RB+B" },
+  { slot: "4", combo: "RB+A" },
+  { slot: "5", combo: "RT+X" },
+  { slot: "6", combo: "RT+Y" },
+  { slot: "7", combo: "RT+B" },
+  { slot: "8", combo: "RT+A" },
+  { slot: "9", combo: "RT+DPAD_LEFT" },
+  { slot: "0", combo: "RT+DPAD_UP" },
+  { slot: "-", combo: "RT+DPAD_RIGHT" },
+  { slot: "=", combo: "RT+DPAD_DOWN" }
 ];
-
-export interface PlacedSlot {
-  slotIndex: number; // 0 to 11
-  key: string;       // "1", "2", ... "="
-  combo: string;     // "RB+X", etc.
-  cooldown: number;  // 8.0
-  skill: ActiveSkill | null;
-}
-
-export const DEFAULT_PLACED_SLOTS: PlacedSlot[] = DEFAULT_HOTKEY_SLOTS.map((h, i) => ({
-  slotIndex: i,
-  key: h.slot,
-  combo: h.combo,
-  cooldown: h.defaultCooldown,
-  skill: INITIAL_CATALOG[i] || null
-}));
-
 
 export interface ChainStep {
   id: string;
