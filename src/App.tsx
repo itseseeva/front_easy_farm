@@ -82,6 +82,21 @@ export const App: React.FC = () => {
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
   const [currentCastingSlot, setCurrentCastingSlot] = useState<number | null>(null);
 
+  // Sync icons from Python backend on initial mount
+  useEffect(() => {
+    if (!window.pywebview) return; // в превью AI Studio бэкенда нет — это нормально
+    window.pywebview.api.get_saved_icons().then((icons) => {
+      if (!icons || Object.keys(icons).length === 0) return;
+      setCatalog(prev =>
+        prev.map(skill =>
+          skill.customIcon ? skill : { ...skill, customIcon: icons[skill.id] ?? skill.customIcon }
+        )
+      );
+    }).catch((err) => {
+      console.warn('get_saved_icons: не удалось получить иконки', err);
+    });
+  }, []); // пустой массив зависимостей — вызываем один раз при монтировании
+
   // Auto-dismiss notifications
   useEffect(() => {
     if (successMessage) {
