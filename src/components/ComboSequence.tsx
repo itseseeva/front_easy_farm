@@ -3,6 +3,7 @@ import { ActiveSkill, ComboChain, ChainStep } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
 import { PlacedSlot } from './ActiveSkillsBoard';
+import { setCustomDragGhost } from '../utils/dragUtils';
 import { Plus, Trash2, Clock, CornerDownRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
@@ -218,6 +219,7 @@ export const ComboSequence: React.FC<Props> = ({
       e.preventDefault();
       return;
     }
+    setCustomDragGhost(e);
     const item: DragItem = { type: 'step', chainId, stepId, fromIndex };
     setActiveDrag(item);
     e.dataTransfer.setData('application/json', JSON.stringify(item));
@@ -226,6 +228,7 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Drag and Drop: Start from catalog
   const handleDragStartFromCatalog = (e: React.DragEvent, skill: ActiveSkill) => {
+    setCustomDragGhost(e);
     const item: DragItem = { type: 'catalog', skillId: skill.id };
     setActiveDrag(item);
     e.dataTransfer.setData('application/json', JSON.stringify(item));

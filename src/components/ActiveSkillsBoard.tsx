@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ActiveSkill, INITIAL_CATALOG } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
+import { setCustomDragGhost } from '../utils/dragUtils';
 import { Trash2 } from 'lucide-react';
 
 export interface PlacedSlot {
@@ -100,6 +101,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
       e.preventDefault();
       return;
     }
+    setCustomDragGhost(e);
     const item: DragSource = { location: 'top', index };
     setActiveDrag(item);
     try {
@@ -114,6 +116,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
       e.preventDefault();
       return;
     }
+    setCustomDragGhost(e);
     const item: DragSource = { location: 'bottom', index };
     setActiveDrag(item);
     try {
@@ -433,7 +436,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                       }}
                       onDrop={(e) => handleDropOnTopSquare(e, globalIdx)}
                       onClick={() => handleCellClick('top', globalIdx)}
-                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative cursor-grab active:cursor-grabbing transition-all duration-150 group select-none shadow-md shrink-0 ${
+                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative cursor-grab active:cursor-grabbing transition-all duration-150 group select-none shadow-md shrink-0 overflow-hidden ${
                         isSelected
                           ? 'ring-2 ring-[#e2e8f0] shadow-[0_0_12px_rgba(255,255,255,0.3)] scale-105 z-20'
                           : isHovered
@@ -441,7 +444,8 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                           : 'border border-[#2d3343] hover:border-[#4d566b] hover:shadow-lg'
                       }`}
                       style={{
-                        background: 'linear-gradient(145deg, #1c1f2b, #12141c)'
+                        background: 'linear-gradient(145deg, #1c1f2b, #12141c)',
+                        contain: 'paint'
                       }}
                     >
                       <div className="w-full h-full relative">
