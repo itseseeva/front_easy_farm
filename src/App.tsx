@@ -82,6 +82,59 @@ export const App: React.FC = () => {
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
   const [currentCastingSlot, setCurrentCastingSlot] = useState<number | null>(null);
 
+  // Восстанавливаем слоты и цепочки из файла на диске (skills_config.json),
+  // а не из localStorage браузера — источник истины файл, потому что он
+  // переживает перенос папки приложения на другой компьютер, а профиль
+  // WebView2 с localStorage — нет. Payload тут крошечный JSON-текст (не
+  // base64-картинки), поэтому мост не перегружается, в отличие от старой
+  // истории с get_saved_icons.
+  useEffect(() => {
+    if (!window.pywebview) return; // в превью AI Studio бэкенда нет — это нормально
+    window.pywebview.api.load_config().then((res) => {
+      if (!res.ok || !res.config) return; // файла ещё нет — первый запуск, оставляем дефолт
+      const cfg = res.config;
+
+      if (Array.isArray(cfg.hotkeySlots) && cfg.hotkeySlots.length === 12) {
+        setSlots(
+          cfg.hotkeySlots.map((item: any, idx: number) => ({
+            slotIndex: idx,
+            key: item.slot,
+            combo: item.combo,
+            // Файл хранит только id скилла — сам объект (с картинкой и т.д.)
+            // ищем в уже загруженном catalog по этому id.
+            skill: item.skillId ? catalog.find(sk => sk.id === item.skillId) ?? null : null,
+          }))
+        );
+      }
+
+      if (Array.isArray(cfg.chains) && cfg.chains.length > 0) {
+        setChains(
+          cfg.chains.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            order: c.order,
+            cooldownMin: c.cooldownMinSeconds ?? 0,
+            cooldownMax: c.cooldownMaxSeconds ?? 0,
+            triggerAfterChainId: c.triggerAfter,
+            steps: (c.steps || []).map((s: any) => ({
+              // Файл не хранит оригинальный id шага — пересобираем его из
+              // id цепочки и порядкового номера, этого достаточно для
+              // ключей React и подсветки во время теста ротации.
+              id: `${c.id}_step${s.stepIndex}`,
+              skill: s.skillId ? catalog.find(sk => sk.id === s.skillId) ?? null : null,
+              // Кулдаун конкретного шага не сохраняется в файле — реальный
+              // кулдаун цепочки для бота это cooldownMin/cooldownMax выше,
+              // это поле только для отображения в UI.
+              cooldown: 0,
+            })),
+          }))
+        );
+      }
+    }).catch((err) => {
+      console.warn('load_config: не удалось восстановить конфигурацию', err);
+    });
+  }, []); // один раз при монтировании; catalog на этот момент уже заполнен из useState-инициализатора выше
+
   // Auto-dismiss notifications
   useEffect(() => {
     if (successMessage) {

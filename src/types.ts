@@ -62,6 +62,7 @@ declare global {
         test_rotation(): Promise<{ ok: boolean; error?: string; chains_tested?: number }>;
         save_config(configJson: string): Promise<{ ok: boolean; error?: string }>;
         save_icon(slot: string, dataUrl: string): Promise<{ ok: boolean; error?: string; path?: string }>;
+        load_config(): Promise<{ ok: boolean; error?: string; config?: any }>;
       };
     };
   }
