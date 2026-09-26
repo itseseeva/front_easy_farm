@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ActiveSkill, INITIAL_CATALOG } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { X, Search } from 'lucide-react';
@@ -25,39 +26,37 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
   onUploadImage,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [isClosing, setIsClosing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Smooth close helper
-  const handleClose = () => {
-    if (isClosing) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 190);
-  };
-
-  const handleSelect = (skill: ActiveSkill) => {
-    if (isClosing) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      onSelectSkill(skill);
-      onClose();
-    }, 120);
-  };
+  // Auto focus input when opened, reset query when closed
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 120);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(() => {
+        setSearchQuery('');
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
 
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isClosing]);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  const handleSelect = (skill: ActiveSkill) => {
+    onSelectSkill(skill);
+    onClose();
+  };
 
   const filteredSkills = catalog.filter(skill => {
     if (!searchQuery.trim()) return true;
@@ -69,17 +68,25 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
     );
   });
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-md cursor-pointer ${
-        isClosing ? 'animate-tech-backdrop-exit' : 'animate-tech-backdrop'
+      inert={!isOpen ? true : undefined}
+      className={`fixed inset-0 z-[9999] flex items-start justify-center p-2.5 pt-4 sm:p-4 sm:pt-8 bg-black/75 backdrop-blur-md ${
+        isOpen
+          ? 'opacity-100 pointer-events-auto cursor-pointer panel-backdrop-enter'
+          : 'opacity-0 pointer-events-none panel-backdrop-exit'
       }`}
-      onClick={handleClose}
+      onClick={onClose}
     >
       <div
-        className={`relative bg-[#12141d] border border-[#2b3040] rounded-xl w-full max-w-[490px] max-h-[88vh] flex flex-col shadow-[0_25px_65px_-10px_rgba(0,0,0,0.95)] overflow-hidden select-none cursor-default backdrop-blur-xl ${
-          isClosing ? 'animate-tech-modal-exit' : 'animate-tech-modal'
+        className={`relative bg-[#12141d] border border-[#2b3040] rounded-xl w-full max-w-[490px] max-h-[85vh] flex flex-col shadow-[0_25px_65px_-10px_rgba(0,0,0,0.95)] overflow-hidden select-none cursor-default backdrop-blur-xl ${
+          isOpen ? 'panel-slide-top-enter' : 'panel-slide-top-exit'
         }`}
+        style={{
+          transform: isOpen ? 'translateY(0)' : 'translateY(-125vh)'
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -102,7 +109,7 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
           </div>
 
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="w-7 h-7 rounded-lg bg-[#1a1e2b] hover:bg-rose-900/60 text-gray-400 hover:text-white flex items-center justify-center transition border border-[#2e3448] hover:border-rose-500/50 cursor-pointer shadow-sm"
             title="Закрыть (Esc)"
           >
@@ -180,6 +187,7 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
           КЛИК ПО УМЕНИЮ ДЛЯ ВСТАВКИ В СЛОТ
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

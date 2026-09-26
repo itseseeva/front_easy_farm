@@ -52,3 +52,17 @@ export interface VisionSettings {
   yellowLower: [number, number, number];
   yellowUpper: [number, number, number];
 }
+
+declare global {
+  interface Window {
+    pywebview?: {
+      api: {
+        start_bot(): Promise<{ ok: boolean; error?: string }>;
+        stop_bot(): Promise<{ ok: boolean; error?: string }>;
+        test_rotation(): Promise<{ ok: boolean; error?: string; chains_tested?: number }>;
+        save_config(configJson: string): Promise<{ ok: boolean; error?: string }>;
+        save_icon(slot: string, dataUrl: string): Promise<{ ok: boolean; error?: string; path?: string }>;
+      };
+    };
+  }
+}
