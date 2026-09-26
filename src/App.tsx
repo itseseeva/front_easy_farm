@@ -1,27 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { ActiveSkill, INITIAL_CATALOG, ComboChain, DEFAULT_COMBO_CHAINS } from './data/skillsLibrary';
+import { ActiveSkill, INITIAL_CATALOG, ComboChain, DEFAULT_COMBO_CHAINS, DEFAULT_HOTKEY_SLOTS } from './data/skillsLibrary';
 import { ComboSequence } from './components/ComboSequence';
+import { ActiveSkillsBoard, PlacedSlot } from './components/ActiveSkillsBoard';
 import {
   Play,
   Square,
   FastForward,
-  Download,
-  Package,
   Zap,
+  LayoutGrid,
+  Layers
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // 24 Available Skills
+  // Active Tab: "skills" (Панель умений) or "combos" (Панель комбо)
+  const [activeTab, setActiveTab] = useState<'skills' | 'combos'>('skills');
+
+  // 24 Available Skills (guaranteed fixed order matching INITIAL_CATALOG, preserving custom uploaded icons)
   const [catalog, setCatalog] = useState<ActiveSkill[]>(() => {
     const saved = localStorage.getItem('tl_skills_catalog');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return INITIAL_CATALOG.map(initial => {
+            const found = parsed.find((p: ActiveSkill) => p.id === initial.id);
+            return found && found.customIcon ? { ...initial, customIcon: found.customIcon } : initial;
+          });
+        }
       } catch (e) {
         return INITIAL_CATALOG;
       }
     }
     return INITIAL_CATALOG;
+  });
+
+  // 12 Battle Slots (Панель умений)
+  const [slots, setSlots] = useState<PlacedSlot[]>(() => {
+    const saved = localStorage.getItem('tl_placed_slots');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === 12) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return DEFAULT_HOTKEY_SLOTS.map((def, idx) => ({
+      slotIndex: idx,
+      key: def.slot,
+      combo: def.combo,
+      cooldown: def.defaultCooldown,
+      skill: INITIAL_CATALOG[idx] || null
+    }));
   });
 
   // Combo Chains (Dynamic chains & customizable steps)
@@ -42,12 +72,16 @@ export const App: React.FC = () => {
   const [isBotRunning, setIsBotRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
-  const [showExeModal, setShowExeModal] = useState(false);
+  const [currentCastingSlot, setCurrentCastingSlot] = useState<number | null>(null);
 
   // Save changes to localStorage
   useEffect(() => {
     localStorage.setItem('tl_skills_catalog', JSON.stringify(catalog));
   }, [catalog]);
+
+  useEffect(() => {
+    localStorage.setItem('tl_placed_slots', JSON.stringify(slots));
+  }, [slots]);
 
   useEffect(() => {
     localStorage.setItem('tl_combo_chains', JSON.stringify(chains));
@@ -72,44 +106,64 @@ export const App: React.FC = () => {
     if (isBotRunning) {
       setIsBotRunning(false);
       setActiveCasting(null);
+      setCurrentCastingSlot(null);
     } else {
       setIsBotRunning(true);
     }
   };
 
-  // Run Test (F5) through all filled steps in all chains
+  // Run Test (F5)
   const runTest = async () => {
     if (isBotRunning || isTestRunning) return;
     setIsTestRunning(true);
 
-    // Sort chains by order
-    const sortedChains = [...chains].sort((a, b) => a.order - b.order);
-
-    for (const chain of sortedChains) {
-      const activeSteps = chain.steps.filter(s => s.skill !== null);
-      for (const step of activeSteps) {
-        setActiveCasting({ chainId: chain.id, stepId: step.id });
-        await new Promise(r => setTimeout(r, 600));
+    if (activeTab === 'skills') {
+      // Test cast skills in the 12 slots in order
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].skill !== null) {
+          setCurrentCastingSlot(i);
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
-      // Wait for chain randomized cooldown simulation if any
-      const minCd = chain.cooldownMin ?? chain.cooldown ?? 0;
-      const maxCd = chain.cooldownMax ?? minCd;
-      const randomCooldown = maxCd > minCd
-        ? Math.floor(Math.random() * (maxCd - minCd + 1)) + minCd
-        : minCd;
+      setCurrentCastingSlot(null);
+    } else {
+      // Test cast combo chains
+      const sortedChains = [...chains].sort((a, b) => a.order - b.order);
 
-      if (randomCooldown > 0) {
-        await new Promise(r => setTimeout(r, Math.min(randomCooldown * 50, 1000)));
+      for (const chain of sortedChains) {
+        const activeSteps = chain.steps.filter(s => s.skill !== null);
+        for (const step of activeSteps) {
+          setActiveCasting({ chainId: chain.id, stepId: step.id });
+          await new Promise(r => setTimeout(r, 600));
+        }
+        // Wait for chain randomized cooldown simulation if any
+        const minCd = chain.cooldownMin ?? chain.cooldown ?? 0;
+        const maxCd = chain.cooldownMax ?? minCd;
+        const randomCooldown = maxCd > minCd
+          ? Math.floor(Math.random() * (maxCd - minCd + 1)) + minCd
+          : minCd;
+
+        if (randomCooldown > 0) {
+          await new Promise(r => setTimeout(r, Math.min(randomCooldown * 50, 1000)));
+        }
       }
+      setActiveCasting(null);
     }
 
-    setActiveCasting(null);
     setIsTestRunning(false);
   };
 
   const handleUploadImage = (skillId: string, base64: string) => {
     setCatalog(prev =>
       prev.map(s => (s.id === skillId ? { ...s, customIcon: base64 } : s))
+    );
+    setSlots(prevSlots =>
+      prevSlots.map(s => {
+        if (s.skill && s.skill.id === skillId) {
+          return { ...s, skill: { ...s.skill, customIcon: base64 } };
+        }
+        return s;
+      })
     );
     setChains(prevChains =>
       prevChains.map(chain => ({
@@ -129,7 +183,18 @@ export const App: React.FC = () => {
 
   const handleExportJson = () => {
     const output: Record<string, any> = {
-      "_README": "Конфигурация боевых цепочек ротации для Throne and Liberty.",
+      "_README": "Конфигурация умений, слотов и боевых цепочек ротации для Throne and Liberty.",
+      "exportDate": new Date().toISOString(),
+      "totalSlots": slots.length,
+      "hotkeySlots": slots.map((s, idx) => ({
+        slot: s.key,
+        slotIndex: idx + 1,
+        combo: s.combo,
+        skillId: s.skill ? s.skill.id : null,
+        skillName: s.skill ? s.skill.name : "None",
+        cooldown: s.cooldown
+      })),
+      "totalChains": chains.length,
       "chains": chains.map(chain => ({
         id: chain.id,
         name: chain.name,
@@ -138,11 +203,20 @@ export const App: React.FC = () => {
         cooldownMinSeconds: chain.cooldownMin ?? chain.cooldown ?? 0,
         cooldownMaxSeconds: chain.cooldownMax ?? chain.cooldownMin ?? chain.cooldown ?? 0,
         stepsCount: chain.steps.length,
-        steps: chain.steps.map((s, idx) => ({
-          stepIndex: idx + 1,
-          skillName: s.skill ? s.skill.name : "None",
-          skillId: s.skill ? s.skill.id : null
-        }))
+        steps: chain.steps.map((s, idx) => {
+          // If skill placed in slots, find its slot & combo
+          const boundSlot = s.skill ? slots.find(slot => slot.skill?.id === s.skill?.id) : null;
+          const combo = boundSlot ? boundSlot.combo : (s.skill ? s.skill.defaultCombo : null);
+          const slotKey = boundSlot ? boundSlot.key : (s.skill ? (DEFAULT_HOTKEY_SLOTS.find(h => h.combo === s.skill?.defaultCombo)?.slot || null) : null);
+
+          return {
+            stepIndex: idx + 1,
+            skillId: s.skill ? s.skill.id : null,
+            skillName: s.skill ? s.skill.name : "None",
+            slot: slotKey,
+            combo: combo
+          };
+        })
       }))
     };
 
@@ -151,166 +225,112 @@ export const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'combo_chains_config.json';
+    a.download = 'throne_and_liberty_rotation_config.json';
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="min-h-screen bg-[#0e1015] text-[#b8bfcc] flex flex-col selection:bg-[#343a4a] selection:text-white">
-      {/* Minimalist Top Bar */}
-      <header className="bg-[#12141a] border-b border-[#21242e] sticky top-0 z-40 px-4 sm:px-6 py-2.5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      {/* Top Compact Header */}
+      <header className="bg-[#12141a] border-b border-[#21242e] sticky top-0 z-40 px-2 py-1.5 shadow-sm">
+        <div className="max-w-[530px] w-full mx-auto flex items-center justify-between gap-1.5">
           {/* Logo & Title */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-7 h-7 rounded bg-[#1c1f28] border border-[#2e3342] flex items-center justify-center font-bold text-gray-200 text-xs shadow-inner">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="w-6 h-6 rounded bg-[#1c1f28] border border-[#2e3342] flex items-center justify-center font-bold text-gray-200 text-xs shadow-inner">
+              <Zap className="w-3 h-3 text-emerald-400" />
             </div>
-            <span className="font-serif tracking-widest text-xs uppercase text-gray-200 font-semibold">
-              Throne & Liberty <span className="text-gray-500 font-normal">| Конструктор Комбо</span>
+            <span className="font-serif tracking-[0.15em] text-xs uppercase text-gray-100 font-bold">
+              EasyFarm
             </span>
           </div>
 
-          {/* Right Action Controls */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Navigation Tabs: Умения / Комбо */}
+          <div className="flex items-center bg-[#151722] p-0.5 rounded-lg border border-[#262a3a]">
+            <button
+              onClick={() => setActiveTab('skills')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                activeTab === 'skills'
+                  ? 'bg-[#252b3d] text-gray-100 shadow border border-[#3b445c]'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e2b]'
+              }`}
+            >
+              <LayoutGrid className="w-3 h-3 text-blue-400" />
+              <span>Умения</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('combos')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                activeTab === 'combos'
+                  ? 'bg-[#252b3d] text-gray-100 shadow border border-[#3b445c]'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1e2b]'
+              }`}
+            >
+              <Layers className="w-3 h-3 text-emerald-400" />
+              <span>Комбо</span>
+            </button>
+          </div>
+
+          {/* Right Action Controls: Старт & Тест */}
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={toggleBot}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition cursor-pointer shadow border ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded font-medium text-xs transition cursor-pointer shadow border ${
                 isBotRunning
                   ? 'bg-[#2d1519] text-rose-300 border-rose-800/80 animate-pulse'
                   : 'bg-[#15241b] text-emerald-300 border-emerald-800/80 hover:bg-[#1b2e23]'
               }`}
             >
-              {isBotRunning ? <Square className="w-3.5 h-3.5 fill-rose-300" /> : <Play className="w-3.5 h-3.5 fill-emerald-300" />}
-              <span>{isBotRunning ? 'Стоп (F4)' : 'Старт (F4)'}</span>
+              {isBotRunning ? <Square className="w-3 h-3 fill-rose-300" /> : <Play className="w-3 h-3 fill-emerald-300" />}
+              <span>{isBotRunning ? 'Стоп' : 'Старт'}</span>
             </button>
 
             <button
               onClick={runTest}
               disabled={isBotRunning || isTestRunning}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#171922] hover:bg-[#20232e] disabled:opacity-40 text-gray-300 text-xs font-medium rounded-md border border-[#282c3a] transition cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 bg-[#171922] hover:bg-[#20232e] disabled:opacity-40 text-gray-300 text-xs font-medium rounded border border-[#282c3a] transition cursor-pointer"
+              title="Тестовый прогон цепочек (F5)"
             >
-              <FastForward className="w-3.5 h-3.5 text-gray-400" />
-              <span className="hidden sm:inline">Тест</span> (F5)
-            </button>
-
-            <button
-              onClick={handleExportJson}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-[#171922] hover:bg-[#20232e] text-gray-300 text-xs font-medium rounded-md border border-[#282c3a] transition cursor-pointer"
-              title="Скачать конфигурацию цепочек"
-            >
-              <Download className="w-3.5 h-3.5 text-gray-400" />
-              <span className="hidden md:inline">JSON</span>
-            </button>
-
-            <button
-              onClick={() => setShowExeModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-[#171922] hover:bg-[#20232e] text-gray-300 text-xs font-medium rounded-md border border-[#282c3a] transition cursor-pointer"
-              title="Инструкция по сборке в .EXE"
-            >
-              <Package className="w-3.5 h-3.5 text-gray-400" />
-              <span>.EXE</span>
+              <FastForward className="w-3 h-3 text-gray-400" />
+              <span>Тест</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area (Only Combo Chains) */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-5 flex flex-col items-center">
-        <ComboSequence
-          chains={chains}
-          onChainsChange={setChains}
-          catalog={catalog}
-          onUploadImage={handleUploadImage}
-          activeCasting={activeCasting}
-        />
+      {/* Main Content Area: Compact, snug fit without empty margins */}
+      <main className="flex-1 w-full max-w-[530px] mx-auto p-1.5 flex flex-col items-center">
+        {activeTab === 'skills' ? (
+          <ActiveSkillsBoard
+            catalog={catalog}
+            slots={slots}
+            onSlotsChange={setSlots}
+            onUploadImage={handleUploadImage}
+            currentCastingSlot={currentCastingSlot}
+          />
+        ) : (
+          <ComboSequence
+            chains={chains}
+            onChainsChange={setChains}
+            catalog={catalog}
+            onUploadImage={handleUploadImage}
+            activeCasting={activeCasting}
+            slots={slots}
+          />
+        )}
       </main>
 
       {/* Minimal Footer */}
-      <footer className="bg-[#0f1116] border-t border-[#1c1e27] py-2 text-[10px] text-gray-500 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <footer className="bg-[#0f1116] border-t border-[#1c1e27] py-1 text-[10px] text-gray-500 px-3">
+        <div className="max-w-[530px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${isBotRunning ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`}></span>
-            <span>{isBotRunning ? 'Бот активен (F4)' : 'Бот готов к запуску'}</span>
+            <span>{isBotRunning ? 'Бот активен (F4)' : 'Готов (F4)'}</span>
           </div>
-          <div>EasyFarm • Модульные цепочки комбо ротации</div>
+          <div>EasyFarm</div>
         </div>
       </footer>
-
-      {/* .EXE Modal */}
-      {showExeModal && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#14161e] border border-[#272b38] rounded-xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-[#212430] flex items-center justify-between">
-              <h3 className="font-medium text-gray-200 text-sm flex items-center gap-2">
-                <Package className="w-4 h-4 text-gray-400" />
-                Сборка в автономный .EXE файл
-              </h3>
-              <button
-                onClick={() => setShowExeModal(false)}
-                className="text-gray-400 hover:text-white text-base p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto text-xs text-gray-300 space-y-3 leading-relaxed">
-              <div className="p-3 bg-[#181b24] border border-[#292e3d] rounded-lg text-gray-300">
-                <strong className="block text-gray-200 text-xs mb-1">
-                  ✓ Работа в одном файле:
-                </strong>
-                При запуске <strong>EasyFarm.exe</strong> открывается это окно. Вы настраиваете свои цепочки умений и их кулдауны, а кнопка <strong>«Старт (F4)»</strong> запускает бота.
-              </div>
-
-              <div>
-                <span className="font-medium text-gray-300 text-xs block mb-1">
-                  1. Команда сборки PyInstaller:
-                </span>
-                <pre className="bg-[#0c0d12] p-2.5 rounded-lg border border-[#1e212b] font-mono text-gray-300 text-[11px] overflow-x-auto">
-                  pip install pyinstaller pywebview{'\n'}
-                  pyinstaller --onefile --noconsole --name "EasyFarm" app_launcher.py
-                </pre>
-              </div>
-
-              <div>
-                <span className="font-medium text-gray-300 text-xs block mb-1">
-                  2. Код app_launcher.py:
-                </span>
-                <pre className="bg-[#0c0d12] p-2.5 rounded-lg border border-[#1e212b] font-mono text-gray-400 text-[11px] overflow-x-auto">
-{`import webview
-from main import BotController
-
-controller = BotController()
-
-class Api:
-    def start_bot(self):
-        controller._start()
-    def stop_bot(self):
-        controller._stop()
-
-window = webview.create_window(
-    'Throne and Liberty EasyFarm',
-    'dist/index.html',
-    js_api=Api(),
-    width=920,
-    height=880
-)
-webview.start()`}
-                </pre>
-              </div>
-            </div>
-
-            <div className="p-3 border-t border-[#212430] bg-[#101218] flex justify-end">
-              <button
-                onClick={() => setShowExeModal(false)}
-                className="px-3.5 py-1.5 bg-[#20232e] hover:bg-[#2a2f3e] text-gray-200 text-xs font-medium rounded border border-[#2e3342] transition cursor-pointer"
-              >
-                Закрыть
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -276,6 +276,23 @@ export const DEFAULT_HOTKEY_SLOTS = [
   { slot: "=", combo: "RT+DPAD_DOWN", defaultCooldown: 8.0 }
 ];
 
+export interface PlacedSlot {
+  slotIndex: number; // 0 to 11
+  key: string;       // "1", "2", ... "="
+  combo: string;     // "RB+X", etc.
+  cooldown: number;  // 8.0
+  skill: ActiveSkill | null;
+}
+
+export const DEFAULT_PLACED_SLOTS: PlacedSlot[] = DEFAULT_HOTKEY_SLOTS.map((h, i) => ({
+  slotIndex: i,
+  key: h.slot,
+  combo: h.combo,
+  cooldown: h.defaultCooldown,
+  skill: INITIAL_CATALOG[i] || null
+}));
+
+
 export interface ChainStep {
   id: string;
   skill: ActiveSkill | null;

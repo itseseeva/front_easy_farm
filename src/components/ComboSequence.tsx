@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ActiveSkill, ComboChain, ChainStep } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
-import { Plus, Trash2, Clock, CornerDownRight } from 'lucide-react';
+import { SkillPickerModal } from './SkillPickerModal';
+import { PlacedSlot } from './ActiveSkillsBoard';
+import { Plus, Trash2, Clock, CornerDownRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   chains: ComboChain[];
@@ -9,6 +11,7 @@ interface Props {
   catalog: ActiveSkill[];
   onUploadImage: (id: string, base64: string) => void;
   activeCasting?: { chainId: string; stepId: string } | null;
+  slots?: PlacedSlot[];
 }
 
 type DragItem =
@@ -21,6 +24,7 @@ export const ComboSequence: React.FC<Props> = ({
   catalog,
   onUploadImage,
   activeCasting = null,
+  slots = [],
 }) => {
   const [selectedCatalogSkill, setSelectedCatalogSkill] = useState<ActiveSkill | null>(null);
 
@@ -28,6 +32,13 @@ export const ComboSequence: React.FC<Props> = ({
   const [activeDrag, setActiveDrag] = useState<DragItem | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<{ chainId: string; stepId: string } | null>(null);
   const [isOverCatalog, setIsOverCatalog] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<{ chainId: string; stepId: string; stepIndex: number } | null>(null);
+
+  // Active Chain for Swipe / Carousel View
+  const [activeChainIndex, setActiveChainIndex] = useState(0);
+
+  // Keep active index within valid bounds
+  const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
 
   // Set of all skill IDs currently placed in any chain
   const placedSkillIds = new Set<string>();
@@ -37,7 +48,7 @@ export const ComboSequence: React.FC<Props> = ({
     });
   });
 
-  // Helper to add a new chain
+  // Helper to add a new chain with smooth swipe transition
   const handleAddChain = () => {
     const nextOrder = chains.length + 1;
     const newChainId = `chain_${Date.now()}`;
@@ -59,6 +70,8 @@ export const ComboSequence: React.FC<Props> = ({
     };
 
     onChainsChange([...chains, newChain]);
+    // Smoothly swipe to the newly created chain
+    setActiveChainIndex(chains.length);
   };
 
   // Helper to remove a chain
@@ -68,6 +81,7 @@ export const ComboSequence: React.FC<Props> = ({
     // Reindex order
     const reordered = filtered.map((c, idx) => ({ ...c, order: idx + 1 }));
     onChainsChange(reordered);
+    setActiveChainIndex(prev => Math.min(prev, Math.max(0, reordered.length - 1)));
   };
 
   // Update chain attributes (name, order, cooldown, triggerAfterChainId)
@@ -133,8 +147,8 @@ export const ComboSequence: React.FC<Props> = ({
     onChainsChange(updated);
   };
 
-  // Step click: places catalog skill if one is selected
-  const handleStepClick = (chainId: string, stepId: string) => {
+  // Step click: places catalog skill if one is selected, or opens picker if empty
+  const handleStepClick = (chainId: string, stepId: string, stepIndex: number) => {
     if (selectedCatalogSkill) {
       const updated = chains.map(c => {
         return {
@@ -153,7 +167,37 @@ export const ComboSequence: React.FC<Props> = ({
       });
       onChainsChange(updated);
       setSelectedCatalogSkill(null);
+    } else {
+      const chain = chains.find(c => c.id === chainId);
+      const step = chain?.steps.find(s => s.id === stepId);
+      if (!step?.skill) {
+        // Empty step clicked! Open skill picker modal
+        setPickerTarget({ chainId, stepId, stepIndex });
+      }
     }
+  };
+
+  // Skill selected from modal for combo chain
+  const handleSelectSkillFromPicker = (skill: ActiveSkill) => {
+    if (!pickerTarget) return;
+    const { chainId, stepId } = pickerTarget;
+
+    const updated = chains.map(c => {
+      return {
+        ...c,
+        steps: c.steps.map(s => {
+          if (c.id === chainId && s.id === stepId) {
+            return { ...s, skill };
+          }
+          if (s.skill?.id === skill.id) {
+            return { ...s, skill: null };
+          }
+          return s;
+        })
+      };
+    });
+    onChainsChange(updated);
+    setPickerTarget(null);
   };
 
   // Drag and Drop: Start from step
@@ -283,50 +327,109 @@ export const ComboSequence: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full select-none max-w-4xl">
-      {/* Top Action Bar: Add Chain button */}
-      <div className="w-full flex items-center justify-between px-1">
+    <div className="flex flex-col items-center gap-2.5 w-full select-none max-w-[500px]">
+      {/* Top Action Bar: Add Chain button + Chain switcher if > 1 */}
+      <div className="w-full flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-serif tracking-widest uppercase text-gray-300 font-medium">
             Боевые цепочки комбо
           </span>
           <span className="text-[10px] text-gray-500 font-mono">
-            ({chains.length} {chains.length === 1 ? 'цепочка' : 'цепочки'})
+            ({chains.length})
           </span>
+          {chains.length > 1 && (
+            <div className="flex items-center gap-1 bg-[#101217] p-0.5 rounded-lg border border-[#232736] ml-1">
+              {chains.map((c, i) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveChainIndex(i)}
+                  className={`px-2 py-0.5 text-[10px] font-mono rounded transition cursor-pointer ${
+                    i === validChainIndex
+                      ? 'bg-[#222838] text-white font-bold shadow border border-[#3b435a]'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                  title={c.name}
+                >
+                  #{i + 1}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
           onClick={handleAddChain}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1b202c] hover:bg-[#252b3b] text-gray-200 text-xs font-medium rounded-lg border border-[#32394c] hover:border-[#4d5670] transition shadow cursor-pointer"
+          className="flex items-center gap-1 px-2.5 py-1 bg-[#1b202c] hover:bg-[#252b3b] text-gray-200 text-xs font-medium rounded-lg border border-[#32394c] hover:border-[#4d5670] transition shadow cursor-pointer"
         >
-          <Plus className="w-3.5 h-3.5 text-emerald-400" />
-          <span>+ Добавить цепочку</span>
+          <Plus className="w-3.5 h-3.5 text-gray-300" />
+          <span>+ Цепочка</span>
         </button>
       </div>
 
-      {/* Render Each Chain */}
-      <div className="flex flex-col gap-5 w-full">
-        {chains.map((chain) => {
-          return (
-            <div
-              key={chain.id}
-              className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.7)] flex flex-col gap-4 relative overflow-hidden transition"
-            >
-              {/* Chain Header & Parameters */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#232633] pb-3 text-xs">
-                {/* Left: Chain Title & Order */}
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                  <input
-                    type="text"
-                    value={chain.name}
-                    onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
-                    className="bg-transparent font-serif tracking-wider text-gray-200 font-medium text-xs sm:text-sm hover:border-b border-gray-600 focus:border-gray-400 outline-none px-1 py-0.5"
-                  />
-                  <span className="text-gray-500 font-mono text-[10px]">
-                    (№ {chain.order})
-                  </span>
-                </div>
+      {/* Swipeable Carousel of Chains */}
+      <div className="relative w-full">
+        {/* Left Arrow Button: Smoothly swipe back to previous chain */}
+        {chains.length > 1 && validChainIndex > 0 && (
+          <button
+            onClick={() => setActiveChainIndex(validChainIndex - 1)}
+            className="absolute -left-3 sm:-left-3.5 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-7 sm:w-8 h-12 rounded-lg bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_20px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
+            title={`Перейти к: ${chains[validChainIndex - 1]?.name || 'предыдущей цепочке'}`}
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-300 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+        )}
+
+        {/* Right Arrow Button: Smoothly swipe to next chain */}
+        {chains.length > 1 && validChainIndex < chains.length - 1 && (
+          <button
+            onClick={() => setActiveChainIndex(validChainIndex + 1)}
+            className="absolute -right-3 sm:-right-3.5 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-7 sm:w-8 h-12 rounded-lg bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_20px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
+            title={`Перейти к: ${chains[validChainIndex + 1]?.name || 'следующей цепочке'}`}
+          >
+            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        )}
+
+        {/* Sliding Track */}
+        <div className="w-full overflow-hidden rounded-xl">
+          <div
+            className="flex w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{
+              transform: `translateX(-${validChainIndex * 100}%)`,
+            }}
+          >
+            {chains.map((chain, chainIdx) => {
+              return (
+                <div
+                  key={chain.id}
+                  className="w-full shrink-0"
+                >
+                  <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative overflow-hidden transition">
+                    {/* Chain Header & Parameters */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#232633] pb-2 text-xs">
+                      {/* Left: Chain Title & Order & Side Arrow */}
+                      <div className="flex items-center gap-2">
+                        {chainIdx > 0 && (
+                          <button
+                            onClick={() => setActiveChainIndex(chainIdx - 1)}
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#10131a] hover:bg-[#1a202d] text-gray-400 hover:text-white border border-[#283042] transition cursor-pointer text-[10px]"
+                            title={`Перейти к ${chains[chainIdx - 1]?.name}`}
+                          >
+                            <ChevronLeft className="w-3 h-3 text-gray-400" />
+                            <span>К #{chainIdx}</span>
+                          </button>
+                        )}
+                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                        <input
+                          type="text"
+                          value={chain.name}
+                          onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
+                          className="bg-transparent font-serif tracking-wider text-gray-200 font-medium text-xs hover:border-b border-gray-600 focus:border-gray-400 outline-none px-1 py-0.5"
+                        />
+                        <span className="text-gray-500 font-mono text-[10px]">
+                          (№ {chain.order})
+                        </span>
+                      </div>
 
                 {/* Center / Right: Execution Flow & Cooldown Settings */}
                 <div className="flex flex-wrap items-center gap-3.5 text-[11px]">
@@ -424,7 +527,7 @@ export const ComboSequence: React.FC<Props> = ({
               </div>
 
               {/* Chain Steps Squares */}
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 w-full">
+              <div className="flex flex-wrap items-center gap-1.5 w-full">
                 {chain.steps.map((step, idx) => {
                   const hasSkill = step.skill !== null;
                   const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
@@ -446,8 +549,8 @@ export const ComboSequence: React.FC<Props> = ({
                         if (hoveredTarget?.stepId === step.id) setHoveredTarget(null);
                       }}
                       onDrop={(e) => handleDropOnStep(e, chain.id, step.id)}
-                      onClick={() => handleStepClick(chain.id, step.id)}
-                      className={`w-[68px] sm:w-[76px] aspect-square rounded-lg p-0.5 sm:p-1 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
+                      onClick={() => handleStepClick(chain.id, step.id, idx + 1)}
+                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
                         isCasting
                           ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
                           : isHovered
@@ -519,15 +622,18 @@ export const ComboSequence: React.FC<Props> = ({
                 <button
                   onClick={() => handleAddStepToChain(chain.id)}
                   title="Добавить ещё один квадратик в цепочку"
-                  className="w-[68px] sm:w-[76px] aspect-square rounded-lg border border-dashed border-[#2d3445] hover:border-[#4d5770] hover:bg-[#161922] transition flex flex-col items-center justify-center text-gray-500 hover:text-gray-200 cursor-pointer shadow-inner shrink-0 group"
+                  className="w-[70px] sm:w-[74px] aspect-square rounded-lg border border-dashed border-[#2d3445] hover:border-[#4d5770] hover:bg-[#161922] transition flex flex-col items-center justify-center text-gray-500 hover:text-gray-200 cursor-pointer shadow-inner shrink-0 group"
                 >
-                  <Plus className="w-5 h-5 text-gray-400 group-hover:text-gray-200 transition mb-0.5" />
+                  <Plus className="w-4 h-4 text-gray-400 group-hover:text-gray-200 transition mb-0.5" />
                   <span className="text-[10px] font-sans">Шаг</span>
                 </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
+          </div>
+        </div>
       </div>
 
       {/* Catalog of Available Skills (24 skills) */}
@@ -538,20 +644,20 @@ export const ComboSequence: React.FC<Props> = ({
         }}
         onDragLeave={() => setIsOverCatalog(false)}
         onDrop={handleDropOnCatalog}
-        className={`w-full bg-[#12141b] border rounded-xl p-4 sm:p-5 transition ${
+        className={`w-full bg-[#12141b] border rounded-xl p-2.5 transition ${
           isOverCatalog && activeDrag?.type === 'step'
             ? 'border-gray-400 ring-2 ring-gray-400/40'
             : 'border-[#232734]'
         }`}
         title="Перетащите умение на любой квадратик в цепочке"
       >
-        <div className="flex items-center justify-between mb-3 pointer-events-none">
+        <div className="flex items-center justify-between mb-2 pointer-events-none">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-gray-300 uppercase tracking-wider">
               Доступные умения
             </span>
             <span className="text-[10px] text-gray-500 font-mono">
-              (перетащите в нужный квадратик или кликните)
+              (перетащите в квадратик)
             </span>
           </div>
           <span className="text-[10px] text-gray-500">
@@ -559,8 +665,8 @@ export const ComboSequence: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* 2 rows of 12 skills (or wrap) */}
-        <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 sm:gap-2">
+        {/* 4 rows of 6 skills matching the board exactly */}
+        <div className="grid grid-cols-6 gap-1.5">
           {catalog.map((skill) => {
             const isPlaced = placedSkillIds.has(skill.id);
             const isSelected = selectedCatalogSkill?.id === skill.id;
@@ -600,6 +706,22 @@ export const ComboSequence: React.FC<Props> = ({
           })}
         </div>
       </div>
+
+      {/* Skill Picker Modal for empty combo step click */}
+      <SkillPickerModal
+        isOpen={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelectSkill={handleSelectSkillFromPicker}
+        title={
+          pickerTarget
+            ? `Выбор умения для шага #${pickerTarget.stepIndex}`
+            : 'Выбор умения'
+        }
+        subtitle="Нажмите на умение, чтобы добавить его в этот шаг цепочки"
+        catalog={catalog}
+        placedSkillIds={placedSkillIds}
+        onUploadImage={onUploadImage}
+      />
     </div>
   );
 };
