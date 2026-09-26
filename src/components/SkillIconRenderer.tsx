@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActiveSkill } from '../data/skillsLibrary';
+import { Camera } from 'lucide-react';
 
 interface Props {
   skill: ActiveSkill;
@@ -24,6 +25,10 @@ export const SkillIconRenderer: React.FC<Props> = ({
         }
       };
       reader.readAsDataURL(file);
+    }
+    // Reset so selecting the same file again triggers onChange
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -52,19 +57,30 @@ export const SkillIconRenderer: React.FC<Props> = ({
 
       {/* Discrete Corner Action to upload/change photo without blocking icon drag */}
       {onUploadImage && (
-        <label
-          title="Заменить фото"
+        <div
+          draggable={false}
+          title="Загрузить / изменить фото умения"
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-1 left-1 w-5 h-5 rounded bg-black/85 hover:bg-black border border-white/20 opacity-0 group-hover:opacity-100 flex items-center justify-center text-gray-200 text-xs transition cursor-pointer z-30 shadow"
+          onDragStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-black/85 hover:bg-black text-gray-200 hover:text-white border border-white/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-150 cursor-pointer z-40 shadow pointer-events-auto hover:scale-110 active:scale-95 overflow-hidden"
         >
-          <span>📷</span>
+          <Camera className="w-3.5 h-3.5 text-gray-200 hover:text-white pointer-events-none" />
           <input
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="hidden"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="Загрузить фото"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50 p-0 m-0"
           />
-        </label>
+        </div>
       )}
     </div>
   );

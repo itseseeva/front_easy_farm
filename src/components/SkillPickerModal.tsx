@@ -158,7 +158,7 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
                   }`}
                 >
                   {/* Skill Icon */}
-                  <div className="w-full h-full relative pointer-events-none">
+                  <div className="w-full h-full relative">
                     <SkillIconRenderer
                       skill={skill}
                       showLevel={false}

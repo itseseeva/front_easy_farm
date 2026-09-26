@@ -444,7 +444,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         background: 'linear-gradient(145deg, #1c1f2b, #12141c)'
                       }}
                     >
-                      <div className="w-full h-full pointer-events-none">
+                      <div className="w-full h-full relative">
                         <SkillIconRenderer
                           skill={skill}
                           showLevel={false}
@@ -533,7 +533,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                   >
                     {hasSkill && slot.skill ? (
-                      <div className="w-full h-full relative pointer-events-none">
+                      <div className="w-full h-full relative">
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
@@ -623,7 +623,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                   >
                     {hasSkill && slot.skill ? (
-                      <div className="w-full h-full relative pointer-events-none">
+                      <div className="w-full h-full relative">
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
