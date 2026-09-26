@@ -1,0 +1,8 @@
+{
+  "name": "Throne & Liberty EasyFarm Bot Suite",
+  "description": "Interactive web suite for Throne & Liberty EasyFarm: visual skill rotation configurator, real-time FSM & controller simulator, vision calibration sandbox, and dev roadmap.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "permissions": []
+}
