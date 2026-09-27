@@ -3,7 +3,7 @@ import { ActiveSkill, INITIAL_CATALOG } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
 import { setCustomDragGhost } from '../utils/dragUtils';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertCircle } from 'lucide-react';
 
 export interface PlacedSlot {
   slotIndex: number; // 0 to 11
@@ -466,12 +466,33 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
           <div className="w-full max-w-sm h-px bg-gradient-to-r from-transparent via-[#2d3444] to-transparent"></div>
         </div>
 
-        {/* ----------------- SECTION 2: BOTTOM (БОЕВАЯ ПАНЕЛЬ: 12 СЛОТОВ) ----------------- */}
+        {/* ----------------- SECTION 2: BOTTOM (БОЕВАЯ ПАНЕЛЬ) ----------------- */}
         <div className="relative z-10 flex flex-col items-center w-full">
           <div className="flex items-center justify-between w-full max-w-[460px] mb-1.5 px-0.5">
-            <span className="text-[11px] uppercase tracking-wider text-gray-400 font-medium font-serif">
-              Боевая панель умений (12 слотов)
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] uppercase tracking-wider text-gray-400 font-medium font-serif">
+                Боевая панель умений
+              </span>
+
+              {/* Exclamation Tooltip */}
+              <div className="relative group/panel-tip inline-flex items-center">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 cursor-help transition">
+                  <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
+                </div>
+                <div className="absolute bottom-full left-0 mb-2 hidden group-hover/panel-tip:flex flex-col w-64 sm:w-72 p-2.5 rounded-lg bg-[#151821]/95 border border-[#373e52] text-[11px] leading-relaxed text-gray-200 shadow-2xl backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
+                  <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Расстановка умений</span>
+                  </div>
+                  <p className="text-gray-300 font-normal">
+                    Выставьте умения точно в том же порядке, как на панели в вашей игре. Это критически важно для правильного нажатия клавиш и безошибочной работы комбо.
+                  </p>
+                  {/* Little triangle arrow */}
+                  <div className="absolute top-full left-3 -mt-px w-2 h-2 rotate-45 bg-[#151821] border-r border-b border-[#373e52]"></div>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={handleClearAllSlots}
               className="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1 transition cursor-pointer"

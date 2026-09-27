@@ -4,7 +4,7 @@ import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
 import { PlacedSlot } from './ActiveSkillsBoard';
 import { setCustomDragGhost } from '../utils/dragUtils';
-import { Plus, Trash2, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle } from 'lucide-react';
 
 interface Props {
   chains: ComboChain[];
@@ -453,7 +453,7 @@ export const ComboSequence: React.FC<Props> = ({
         )}
 
         {/* Sliding Vertical Track: CSS Grid where active card dictates height and cards slide vertically */}
-        <div className="w-full overflow-hidden rounded-xl grid grid-cols-1 grid-rows-1">
+        <div className="w-full rounded-xl grid grid-cols-1 grid-rows-1">
           {chains.map((chain, chainIdx) => {
             const offset = chainIdx - validChainIndex;
             const isCurrent = offset === 0;
@@ -469,7 +469,7 @@ export const ComboSequence: React.FC<Props> = ({
                   visibility: Math.abs(offset) <= 1 ? 'visible' : 'hidden',
                 }}
               >
-                <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative overflow-hidden transition">
+                <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative transition">
                   {/* Chain Header & Parameters */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#232633] pb-2 text-xs">
                     {/* Left: Chain Title & Order */}
@@ -528,6 +528,24 @@ export const ComboSequence: React.FC<Props> = ({
                       />
                     </div>
                     <span className="text-[10px] text-gray-500 select-none">сек</span>
+
+                    {/* Exclamation Tooltip (Top & Compact) */}
+                    <div className="relative group/tip inline-flex items-center">
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 cursor-help transition">
+                        <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
+                      </div>
+                      <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 hidden group-hover/tip:flex flex-col w-48 sm:w-52 p-2 rounded-lg bg-[#151821]/95 border border-[#373e52] text-[10px] leading-snug text-gray-200 shadow-2xl backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
+                        <div className="font-semibold text-amber-300 flex items-center gap-1 mb-1 text-[10px]">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          <span>Периодичность</span>
+                        </div>
+                        <p className="text-gray-300 font-normal">
+                          Ставьте время отката самого долгого умения цепочки, чтобы комбо повторялось без пропуска скиллов.
+                        </p>
+                        {/* Little triangle arrow pointing down */}
+                        <div className="absolute top-full right-1.5 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 -mt-px w-2 h-2 rotate-45 bg-[#151821] border-r border-b border-[#373e52]"></div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Clear / Reset Skills in Chain */}
