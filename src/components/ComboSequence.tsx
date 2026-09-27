@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ActiveSkill, ComboChain, ChainStep } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
 import { PlacedSlot } from './ActiveSkillsBoard';
 import { setCustomDragGhost } from '../utils/dragUtils';
-import { Plus, Trash2, Clock, CornerDownRight, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 
 interface Props {
   chains: ComboChain[];
@@ -40,6 +40,51 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
+
+  // Vertical swipe touch handling
+  const touchStartY = useRef<number | null>(null);
+  const touchDeltaY = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchDeltaY.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    touchDeltaY.current = e.touches[0].clientY - touchStartY.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartY.current === null) return;
+    const threshold = 40;
+    if (touchDeltaY.current < -threshold && validChainIndex < chains.length - 1) {
+      // Swiped UP -> navigate to next chain below
+      setActiveChainIndex(validChainIndex + 1);
+    } else if (touchDeltaY.current > threshold && validChainIndex > 0) {
+      // Swiped DOWN -> navigate to previous chain above
+      setActiveChainIndex(validChainIndex - 1);
+    }
+    touchStartY.current = null;
+    touchDeltaY.current = 0;
+  };
+
+  // Mouse wheel vertical navigation with debounce
+  const lastWheelTime = useRef<number>(0);
+  const handleWheel = (e: React.WheelEvent) => {
+    if (chains.length <= 1) return;
+    const now = Date.now();
+    if (now - lastWheelTime.current < 450) return;
+    if (Math.abs(e.deltaY) > 25) {
+      if (e.deltaY > 0 && validChainIndex < chains.length - 1) {
+        lastWheelTime.current = now;
+        setActiveChainIndex(validChainIndex + 1);
+      } else if (e.deltaY < 0 && validChainIndex > 0) {
+        lastWheelTime.current = now;
+        setActiveChainIndex(validChainIndex - 1);
+      }
+    }
+  };
 
   // Only the skills that are currently assigned to the 12 battle panel slots
   const activePanelSkills: ActiveSkill[] = [];
@@ -377,70 +422,69 @@ export const ComboSequence: React.FC<Props> = ({
         </button>
       </div>
 
-      {/* Swipeable Carousel of Chains */}
-      <div className="relative w-full">
-        {/* Left Arrow Button: Smoothly swipe back to previous chain */}
+      {/* Swipeable Carousel of Chains (Vertical swipe) */}
+      <div
+        className="relative w-full my-1.5"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+      >
+        {/* Top Arrow Button: Smoothly swipe back to previous chain */}
         {chains.length > 1 && validChainIndex > 0 && (
           <button
             onClick={() => setActiveChainIndex(validChainIndex - 1)}
-            className="absolute -left-3 sm:-left-3.5 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-7 sm:w-8 h-12 rounded-lg bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_20px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
-            title={`Перейти к: ${chains[validChainIndex - 1]?.name || 'предыдущей цепочке'}`}
+            className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-14 sm:w-16 h-5 rounded-full bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
+            title={`Предыдущая: ${chains[validChainIndex - 1]?.name || 'цепочка'}`}
           >
-            <ChevronLeft className="w-5 h-5 text-gray-300 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronUp className="w-4 h-4 text-gray-300 group-hover:text-white group-hover:-translate-y-0.5 transition-transform" />
           </button>
         )}
 
-        {/* Right Arrow Button: Smoothly swipe to next chain */}
+        {/* Bottom Arrow Button: Smoothly swipe to next chain */}
         {chains.length > 1 && validChainIndex < chains.length - 1 && (
           <button
             onClick={() => setActiveChainIndex(validChainIndex + 1)}
-            className="absolute -right-3 sm:-right-3.5 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-7 sm:w-8 h-12 rounded-lg bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_20px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
-            title={`Перейти к: ${chains[validChainIndex + 1]?.name || 'следующей цепочке'}`}
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-14 sm:w-16 h-5 rounded-full bg-[#141722]/95 hover:bg-[#202638] text-gray-300 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-200 cursor-pointer group hover:scale-105 active:scale-95"
+            title={`Следующая: ${chains[validChainIndex + 1]?.name || 'цепочка'}`}
           >
-            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
+            <ChevronDown className="w-4 h-4 text-gray-300 group-hover:text-white group-hover:translate-y-0.5 transition-transform" />
           </button>
         )}
 
-        {/* Sliding Track */}
-        <div className="w-full overflow-hidden rounded-xl">
-          <div
-            className="flex w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{
-              transform: `translateX(-${validChainIndex * 100}%)`,
-            }}
-          >
-            {chains.map((chain, chainIdx) => {
-              return (
-                <div
-                  key={chain.id}
-                  className="w-full shrink-0"
-                >
-                  <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative overflow-hidden transition">
-                    {/* Chain Header & Parameters */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#232633] pb-2 text-xs">
-                      {/* Left: Chain Title & Order & Side Arrow */}
-                      <div className="flex items-center gap-2">
-                        {chainIdx > 0 && (
-                          <button
-                            onClick={() => setActiveChainIndex(chainIdx - 1)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#10131a] hover:bg-[#1a202d] text-gray-400 hover:text-white border border-[#283042] transition cursor-pointer text-[10px]"
-                            title={`Перейти к ${chains[chainIdx - 1]?.name}`}
-                          >
-                            <ChevronLeft className="w-3 h-3 text-gray-400" />
-                            <span>К #{chainIdx}</span>
-                          </button>
-                        )}
-                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                        <input
-                          type="text"
-                          value={chain.name}
-                          onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
-                          className="bg-transparent font-serif tracking-wider text-gray-200 font-medium text-xs hover:border-b border-gray-600 focus:border-gray-400 outline-none px-1 py-0.5"
-                        />
-                        <span className="text-gray-500 font-mono text-[10px]">
-                          (№ {chain.order})
-                        </span>
-                      </div>
+        {/* Sliding Vertical Track: CSS Grid where active card dictates height and cards slide vertically */}
+        <div className="w-full overflow-hidden rounded-xl grid grid-cols-1 grid-rows-1">
+          {chains.map((chain, chainIdx) => {
+            const offset = chainIdx - validChainIndex;
+            const isCurrent = offset === 0;
+
+            return (
+              <div
+                key={chain.id}
+                className={`w-full col-start-1 row-start-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  isCurrent ? 'z-10 opacity-100 pointer-events-auto' : 'z-0 opacity-0 pointer-events-none'
+                }`}
+                style={{
+                  transform: `translateY(${offset * 100}%)`,
+                  visibility: Math.abs(offset) <= 1 ? 'visible' : 'hidden',
+                }}
+              >
+                <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative overflow-hidden transition">
+                  {/* Chain Header & Parameters */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#232633] pb-2 text-xs">
+                    {/* Left: Chain Title & Order */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                      <input
+                        type="text"
+                        value={chain.name}
+                        onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
+                        className="bg-transparent font-serif tracking-wider text-gray-200 font-medium text-xs hover:border-b border-gray-600 focus:border-gray-400 outline-none px-1 py-0.5"
+                      />
+                      <span className="text-gray-500 font-mono text-[10px]">
+                        (№ {chain.order})
+                      </span>
+                    </div>
 
                 {/* Center / Right: Execution Flow & Cooldown Settings */}
                 <div className="flex flex-wrap items-center gap-3.5 text-[11px]">
@@ -614,7 +658,6 @@ export const ComboSequence: React.FC<Props> = ({
           </div>
         );
       })}
-          </div>
         </div>
       </div>
 
