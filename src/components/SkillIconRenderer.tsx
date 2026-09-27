@@ -36,11 +36,10 @@ export const SkillIconRenderer: React.FC<Props> = ({
     }
   };
 
-  // Прямой относительный путь к иконке на диске. Работает через file://
-  // без похода в Python-мост: dist/index.html и src/config/icons лежат
-  // в одном корне проекта, относительные пути (в т.ч. "../") разрешаются
-  // движком WebView2 так же, как в обычном браузере.
-  const diskIconPath = `../src/config/icons/${skill.id}.png`;
+  // Относительный путь к иконке в папке dist/icons/. pywebview раздаёт
+  // страницу через встроенный HTTP-сервер с корнем в dist/, поэтому иконки
+  // доступны по пути ./icons/<skillId>.png без необходимости выходить за пределы корня.
+  const diskIconPath = `./icons/${skill.id}.png`;
   const showDiskIcon = !skill.customIcon && !diskIconFailed;
 
   return (
