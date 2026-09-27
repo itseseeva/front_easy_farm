@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ActiveSkill, INITIAL_CATALOG } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
@@ -17,6 +17,8 @@ interface Props {
   catalog: ActiveSkill[];
   slots: PlacedSlot[];
   onSlotsChange: (slots: PlacedSlot[]) => void;
+  topGridSkillIds: (string | null)[];
+  onTopGridChange: (topGridSkillIds: (string | null)[]) => void;
   onUploadImage: (id: string, base64: string) => void;
   currentCastingSlot?: number | null;
 }
@@ -29,55 +31,27 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
   catalog,
   slots,
   onSlotsChange,
+  topGridSkillIds,
+  onTopGridChange,
   onUploadImage,
   currentCastingSlot = null,
 }) => {
   // Top grid: exactly 24 squares (4 rows x 6 cols).
-  // Each square can hold a skill or be empty (null), and skills can be moved freely into ANY square.
-  const [topSlots, setTopSlots] = useState<(ActiveSkill | null)[]>(() => {
-    const saved = localStorage.getItem('tl_top_grid_slots');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 24) {
-          return parsed;
-        }
-      } catch (e) {}
-    }
-
-    // Default initial distribution: skills not in bottom slots are placed in top slots
-    const placedIds = new Set(
-      slots.filter(s => s.skill !== null).map(s => s.skill!.id)
-    );
-
-    const initial: (ActiveSkill | null)[] = Array(24).fill(null);
-    INITIAL_CATALOG.forEach((skill, idx) => {
-      if (!placedIds.has(skill.id)) {
-        initial[idx] = skill;
-      }
+  // Reconstruct full skill objects from catalog using topGridSkillIds
+  const topSlots = useMemo<(ActiveSkill | null)[]>(() => {
+    return Array.from({ length: 24 }).map((_, idx) => {
+      const id = topGridSkillIds[idx];
+      return id ? catalog.find(c => c.id === id) ?? null : null;
     });
+  }, [topGridSkillIds, catalog]);
 
-    return initial;
-  });
-
-  // Save top grid layout to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('tl_top_grid_slots', JSON.stringify(topSlots));
-  }, [topSlots]);
-
-  // Keep uploaded customIcon images synced
-  useEffect(() => {
-    setTopSlots(prev =>
-      prev.map(slot => {
-        if (!slot) return null;
-        const matching = catalog.find(c => c.id === slot.id);
-        if (matching && matching.customIcon !== slot.customIcon) {
-          return { ...slot, customIcon: matching.customIcon };
-        }
-        return slot;
-      })
-    );
-  }, [catalog]);
+  const setTopSlots = (nextTop: (ActiveSkill | null)[]) => {
+    const newIds: (string | null)[] = Array(24).fill(null);
+    for (let i = 0; i < 24; i++) {
+      newIds[i] = nextTop[i] ? nextTop[i]!.id : null;
+    }
+    onTopGridChange(newIds);
+  };
 
   // Active drag state
   const [activeDrag, setActiveDrag] = useState<DragSource | null>(null);

@@ -57,6 +57,17 @@ export const App: React.FC = () => {
     }));
   });
 
+  // Top Grid: 24 squares (skill IDs or null)
+  const [topGridSkillIds, setTopGridSkillIds] = useState<(string | null)[]>(() => {
+    const initial: (string | null)[] = Array(24).fill(null);
+    INITIAL_CATALOG.forEach((skill, idx) => {
+      if (idx >= 12 && idx < 24) {
+        initial[idx] = skill.id;
+      }
+    });
+    return initial;
+  });
+
   // Combo Chains (Dynamic chains & customizable steps)
   const [chains, setChains] = useState<ComboChain[]>(() => {
     const saved = localStorage.getItem('tl_combo_chains');
@@ -133,6 +144,14 @@ export const App: React.FC = () => {
             }))
           );
         }
+
+        if (Array.isArray(cfg.topGridSkillIds)) {
+          const ids: (string | null)[] = Array(24).fill(null);
+          cfg.topGridSkillIds.slice(0, 24).forEach((id: any, i: number) => {
+            ids[i] = typeof id === 'string' ? id : null;
+          });
+          setTopGridSkillIds(ids);
+        }
       }).catch((err) => {
         console.warn('load_config: не удалось восстановить конфигурацию', err);
       });
@@ -185,6 +204,7 @@ export const App: React.FC = () => {
       "_README": "Конфигурация умений, слотов и боевых цепочек ротации для Throne and Liberty.",
       "exportDate": new Date().toISOString(),
       "totalSlots": slots.length,
+      "topGridSkillIds": topGridSkillIds,
       "hotkeySlots": slots.map((s, idx) => ({
         slot: s.key,
         slotIndex: idx + 1,
@@ -216,7 +236,7 @@ export const App: React.FC = () => {
         })
       }))
     };
-  }, [slots, chains]);
+  }, [slots, chains, topGridSkillIds]);
 
   // Backend Bridge: save_config(jsonString) autosave safeguard
   const saveCurrentConfigToBackend = async () => {
@@ -234,7 +254,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Автосохранение [slots, chains] на диск с debounce ~600мс.
+  // Автосохранение [slots, chains, topGridSkillIds] на диск с debounce ~600мс.
   // Первый вызов при монтировании пропускаем через isInitialMount,
   // чтобы не перезаписать файл дефолтной раскладкой до того, как load_config восстановит данные.
   useEffect(() => {
@@ -248,7 +268,7 @@ export const App: React.FC = () => {
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [slots, chains]);
+  }, [slots, chains, topGridSkillIds]);
 
   // Backend Bridge: start_bot() with autosave safeguard
   const handleStartBot = async () => {
@@ -624,6 +644,8 @@ export const App: React.FC = () => {
               catalog={catalog}
               slots={slots}
               onSlotsChange={setSlots}
+              topGridSkillIds={topGridSkillIds}
+              onTopGridChange={setTopGridSkillIds}
               onUploadImage={handleUploadImage}
               currentCastingSlot={currentCastingSlot}
             />
