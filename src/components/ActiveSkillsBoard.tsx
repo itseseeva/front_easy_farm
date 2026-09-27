@@ -57,7 +57,19 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
   const [activeDrag, setActiveDrag] = useState<DragSource | null>(null);
   const [hoveredLocation, setHoveredLocation] = useState<{ location: 'top' | 'bottom'; index: number } | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ location: 'top' | 'bottom'; index: number } | null>(null);
-  const [pickerTarget, setPickerTarget] = useState<number | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<{ location: 'top' | 'bottom'; index: number } | null>(null);
+
+  // Union of all placed skills (both bottom battle slots and top grid)
+  const placedSkillIds = useMemo(() => {
+    const ids = new Set<string>();
+    slots.forEach(s => {
+      if (s.skill) ids.add(s.skill.id);
+    });
+    topGridSkillIds.forEach(id => {
+      if (id) ids.add(id);
+    });
+    return ids;
+  }, [slots, topGridSkillIds]);
 
   // Helper to extract drag source
   const getDragSource = (e: React.DragEvent): DragSource | null => {
@@ -193,9 +205,9 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
       const hasSkill = location === 'top' ? !!topSlots[index] : !!slots[index].skill;
       if (hasSkill) {
         setSelectedCell({ location, index });
-      } else if (location === 'bottom') {
-        // Only open skill picker modal for bottom battle panel slots
-        setPickerTarget(index);
+      } else {
+        // Open skill picker modal for empty cell (both top and bottom)
+        setPickerTarget({ location, index });
       }
       return;
     }
@@ -241,31 +253,43 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
     setSelectedCell(null);
   };
 
-  // Handle skill chosen from SkillPickerModal for bottom battle slot
+  // Handle skill chosen from SkillPickerModal (for top grid square or bottom battle slot)
   const handleSelectSkillFromPicker = (skill: ActiveSkill) => {
     if (pickerTarget === null) return;
 
-    const targetIdx = pickerTarget;
-    const nextBottom = [...slots];
-    const nextTop = [...topSlots];
-
-    // If the skill is in topSlots, clear it from topSlots or swap
-    const topIdx = nextTop.findIndex(s => s?.id === skill.id);
-    if (topIdx !== -1) {
-      nextTop[topIdx] = nextBottom[targetIdx].skill;
+    if (pickerTarget.location === 'top') {
+      const targetIdx = pickerTarget.index;
+      const nextTop = [...topSlots];
+      nextTop[targetIdx] = skill;
+      setTopSlots(nextTop);
+      setPickerTarget(null);
+      return;
     }
 
-    // If the skill was placed in another bottom slot, remove duplicate
-    for (let i = 0; i < nextBottom.length; i++) {
-      if (i !== targetIdx && nextBottom[i].skill?.id === skill.id) {
-        nextBottom[i] = { ...nextBottom[i], skill: null };
+    if (pickerTarget.location === 'bottom') {
+      const targetIdx = pickerTarget.index;
+      const nextBottom = [...slots];
+      const nextTop = [...topSlots];
+
+      // If the skill is in topSlots, clear it from topSlots or swap
+      const topIdx = nextTop.findIndex(s => s?.id === skill.id);
+      if (topIdx !== -1) {
+        nextTop[topIdx] = nextBottom[targetIdx].skill;
+        setTopSlots(nextTop);
       }
-    }
 
-    nextBottom[targetIdx] = { ...nextBottom[targetIdx], skill };
-    setTopSlots(nextTop);
-    onSlotsChange(nextBottom);
-    setPickerTarget(null);
+      // If the skill was placed in another bottom slot, remove duplicate
+      for (let i = 0; i < nextBottom.length; i++) {
+        if (i !== targetIdx && nextBottom[i].skill?.id === skill.id) {
+          nextBottom[i] = { ...nextBottom[i], skill: null };
+        }
+      }
+
+      nextBottom[targetIdx] = { ...nextBottom[targetIdx], skill };
+      onSlotsChange(nextBottom);
+      setPickerTarget(null);
+      return;
+    }
   };
 
   // Remove skill from bottom slot (click ✕) -> moves to first free top slot
@@ -377,7 +401,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                             ? 'ring-2 ring-gray-200 border-white scale-102 z-10 bg-[#1e2330]'
                             : selectedCell
                             ? 'border-[#3b445c] hover:border-gray-400 cursor-pointer'
-                            : 'border-[#1e212b] shadow-inner cursor-default'
+                            : 'border-[#1e212b] hover:border-[#384052] hover:bg-[#141720] shadow-inner cursor-pointer'
                         }`}
                         style={{
                           background: 'radial-gradient(circle, #101217 0%, #0c0d12 100%)',
@@ -647,10 +671,20 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
         isOpen={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
         onSelectSkill={handleSelectSkillFromPicker}
-        title={pickerTarget !== null ? `Выбор умения для слота [ ${slots[pickerTarget]?.key} ]` : 'Выбор умения'}
-        subtitle="Нажмите на умение, чтобы мгновенно назначить его в выбранный слот"
+        title={
+          pickerTarget !== null
+            ? pickerTarget.location === 'bottom'
+              ? `Выбор умения для слота [ ${slots[pickerTarget.index]?.key} ]`
+              : `Выбор умения в ячейку ${pickerTarget.index + 1}`
+            : 'Выбор умения'
+        }
+        subtitle={
+          pickerTarget?.location === 'bottom'
+            ? 'Нажмите на умение, чтобы мгновенно назначить его в выбранный боевой слот'
+            : 'Нажмите на умение, чтобы поместить его в выбранную ячейку верхней сетки'
+        }
         catalog={catalog}
-        placedSkillIds={new Set(slots.filter(s => s.skill !== null).map(s => s.skill!.id))}
+        placedSkillIds={placedSkillIds}
         onUploadImage={onUploadImage}
       />
     </div>

@@ -59,6 +59,7 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
   };
 
   const filteredSkills = catalog.filter(skill => {
+    if (placedSkillIds.has(skill.id)) return false;
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -177,7 +178,9 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
 
           {filteredSkills.length === 0 && (
             <div className="py-8 text-center text-xs text-gray-500 font-sans">
-              Умений не найдено по запросу «{searchQuery}»
+              {searchQuery
+                ? `Умений не найдено по запросу «${searchQuery}»`
+                : 'Все доступные умения уже распределены по панелям'}
             </div>
           )}
         </div>
