@@ -289,9 +289,7 @@ export interface ComboChain {
   id: string;
   name: string;
   order: number; // 1, 2, 3...
-  cooldownMin: number; // Min seconds, e.g. 12
-  cooldownMax: number; // Max seconds, e.g. 18
-  cooldown?: number;   // backward compatibility
+  cooldown: number; // Периодичность цепочки, сек — одно число, не диапазон
   triggerAfterChainId: string; // "start" | "chain-id"
   steps: ChainStep[];
 }
@@ -301,8 +299,6 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     id: "chain_1",
     name: "Цепочка #1 (Основная)",
     order: 1,
-    cooldownMin: 0,
-    cooldownMax: 0,
     cooldown: 0,
     triggerAfterChainId: "start",
     steps: [
@@ -318,9 +314,7 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     id: "chain_2",
     name: "Цепочка #2 (Бурст)",
     order: 2,
-    cooldownMin: 12,
-    cooldownMax: 18,
-    cooldown: 15.0,
+    cooldown: 15,
     triggerAfterChainId: "chain_1",
     steps: [
       { id: "s2_1", skill: null, cooldown: 12.0 },

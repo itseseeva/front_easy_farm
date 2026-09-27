@@ -140,8 +140,15 @@ export const App: React.FC = () => {
               id: c.id,
               name: c.name,
               order: c.order,
-              cooldownMin: c.cooldownMinSeconds ?? 0,
-              cooldownMax: c.cooldownMaxSeconds ?? 0,
+              // Поддержка и нового формата (одно число cooldownSeconds), и
+              // старого (пара cooldownMinSeconds/cooldownMaxSeconds из ранее
+              // сохранённых файлов) — берём среднее старого диапазона, если
+              // новое поле в файле отсутствует.
+              cooldown: c.cooldownSeconds ?? (
+                c.cooldownMinSeconds != null && c.cooldownMaxSeconds != null
+                  ? (c.cooldownMinSeconds + c.cooldownMaxSeconds) / 2
+                  : 0
+              ),
               triggerAfterChainId: c.triggerAfter,
               steps: (c.steps || []).map((s: any) => ({
                 // Файл не хранит оригинальный id шага — пересобираем его из
@@ -238,8 +245,7 @@ export const App: React.FC = () => {
         name: chain.name,
         order: chain.order,
         triggerAfter: chain.triggerAfterChainId,
-        cooldownMinSeconds: chain.cooldownMin ?? chain.cooldown ?? 0,
-        cooldownMaxSeconds: chain.cooldownMax ?? chain.cooldownMin ?? chain.cooldown ?? 0,
+        cooldownSeconds: chain.cooldown ?? 0,
         stepsCount: chain.steps.length,
         steps: chain.steps.map((s, idx) => {
           const boundSlot = s.skill ? customSlots.find(slot => slot.skill?.id === s.skill?.id) : null;

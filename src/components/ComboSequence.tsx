@@ -4,7 +4,7 @@ import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
 import { PlacedSlot } from './ActiveSkillsBoard';
 import { setCustomDragGhost } from '../utils/dragUtils';
-import { Plus, Trash2, Clock, CornerDownRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Clock, CornerDownRight, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 
 interface Props {
   chains: ComboChain[];
@@ -69,9 +69,7 @@ export const ComboSequence: React.FC<Props> = ({
       id: newChainId,
       name: `Цепочка #${nextOrder}`,
       order: nextOrder,
-      cooldownMin: 12,
-      cooldownMax: 18,
-      cooldown: 15.0,
+      cooldown: 15,
       triggerAfterChainId: previousChainId,
       steps: [
         { id: `step_${Date.now()}_1`, skill: null, cooldown: 8.0 },
@@ -466,64 +464,35 @@ export const ComboSequence: React.FC<Props> = ({
                     </select>
                   </div>
 
-                  {/* Chain Cooldown Range Input: 2 separate window boxes */}
+                  {/* Chain Cooldown: single number input */}
                   <div className="flex items-center gap-1.5 text-gray-400">
                     <Clock className="w-3.5 h-3.5 text-gray-500" />
                     <span>Периодичность раз в:</span>
-                    <div className="flex items-center gap-1.5">
-                      {/* First window box */}
-                      <div className="bg-[#101217] border border-[#2c3242] hover:border-[#3e465a] focus-within:border-emerald-500/70 rounded px-1.5 py-0.5 transition shadow-inner">
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="300"
-                          placeholder="12"
-                          value={chain.cooldownMin ?? chain.cooldown ?? 0}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            handleUpdateChain(chain.id, {
-                              cooldownMin: val,
-                              cooldown: val
-                            });
-                          }}
-                          className="w-8 sm:w-9 bg-transparent text-gray-100 text-xs font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
-
-                      {/* Dash */}
-                      <span className="text-gray-500 font-mono text-xs select-none font-bold">-</span>
-
-                      {/* Second window box */}
-                      <div className="bg-[#101217] border border-[#2c3242] hover:border-[#3e465a] focus-within:border-emerald-500/70 rounded px-1.5 py-0.5 transition shadow-inner">
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          max="300"
-                          placeholder="18"
-                          value={chain.cooldownMax ?? chain.cooldownMin ?? chain.cooldown ?? 0}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            handleUpdateChain(chain.id, {
-                              cooldownMax: val
-                            });
-                          }}
-                          className="w-8 sm:w-9 bg-transparent text-gray-100 text-xs font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </div>
-
-                      <span className="text-[10px] text-gray-500 select-none">сек</span>
+                    <div className="bg-[#101217] border border-[#2c3242] hover:border-[#3e465a] focus-within:border-emerald-500/70 rounded px-1.5 py-0.5 transition shadow-inner">
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="300"
+                        placeholder="15"
+                        value={chain.cooldown ?? 0}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          handleUpdateChain(chain.id, { cooldown: val });
+                        }}
+                        className="w-8 sm:w-9 bg-transparent text-gray-100 text-xs font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
                     </div>
+                    <span className="text-[10px] text-gray-500 select-none">сек</span>
                   </div>
 
-                  {/* Clear Skills */}
+                  {/* Clear / Reset Skills in Chain */}
                   <button
                     onClick={() => handleClearAllChainSkills(chain.id)}
-                    title="Очистить умения в этой цепочке"
-                    className="text-gray-500 hover:text-gray-300 p-1 transition cursor-pointer"
+                    title="Сбросить умения в этой цепочке"
+                    className="text-gray-500 hover:text-amber-300 p-1 transition cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                   </button>
 
                   {/* Delete Chain (if > 1) */}
