@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ActiveSkill, INITIAL_CATALOG, ComboChain, DEFAULT_COMBO_CHAINS, DEFAULT_HOTKEY_SLOTS } from './data/skillsLibrary';
 import { ComboSequence } from './components/ComboSequence';
 import { ActiveSkillsBoard, PlacedSlot } from './components/ActiveSkillsBoard';
@@ -81,6 +81,8 @@ export const App: React.FC = () => {
 
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
   const [currentCastingSlot, setCurrentCastingSlot] = useState<number | null>(null);
+
+  const isInitialMount = useRef<boolean>(true);
 
   // Восстанавливаем слоты и цепочки из файла на диске (skills_config.json),
   // а не из localStorage браузера — источник истины файл, потому что он
@@ -231,6 +233,22 @@ export const App: React.FC = () => {
       localStorage.setItem('tl_combo_chains', JSON.stringify(chains));
     }
   };
+
+  // Автосохранение [slots, chains] на диск с debounce ~600мс.
+  // Первый вызов при монтировании пропускаем через isInitialMount,
+  // чтобы не перезаписать файл дефолтной раскладкой до того, как load_config восстановит данные.
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      saveCurrentConfigToBackend();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [slots, chains]);
 
   // Backend Bridge: start_bot() with autosave safeguard
   const handleStartBot = async () => {
