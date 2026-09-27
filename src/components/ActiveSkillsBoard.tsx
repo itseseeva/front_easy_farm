@@ -259,9 +259,9 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
 
     if (pickerTarget.location === 'top') {
       const targetIdx = pickerTarget.index;
-      const nextTop = [...topSlots];
-      nextTop[targetIdx] = skill;
-      setTopSlots(nextTop);
+      const newIds = [...topGridSkillIds];
+      newIds[targetIdx] = skill.id;
+      onTopGridChange(newIds);
       setPickerTarget(null);
       return;
     }

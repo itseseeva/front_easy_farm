@@ -276,6 +276,9 @@ export const DEFAULT_HOTKEY_SLOTS = [
   { slot: "=", combo: "RT+DPAD_DOWN" }
 ];
 
+// 12 default active skills placed in hotkey slots
+export const INITIAL_SKILLS: ActiveSkill[] = INITIAL_CATALOG.slice(0, 12);
+
 export interface ChainStep {
   id: string;
   skill: ActiveSkill | null;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ActiveSkill, INITIAL_CATALOG, ComboChain, DEFAULT_COMBO_CHAINS, DEFAULT_HOTKEY_SLOTS } from './data/skillsLibrary';
+import { ActiveSkill, INITIAL_CATALOG, INITIAL_SKILLS, ComboChain, DEFAULT_COMBO_CHAINS, DEFAULT_HOTKEY_SLOTS } from './data/skillsLibrary';
 import { ComboSequence } from './components/ComboSequence';
 import { ActiveSkillsBoard, PlacedSlot } from './components/ActiveSkillsBoard';
 import {
@@ -12,8 +12,24 @@ import {
   Download,
   Loader2,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  RotateCcw
 } from 'lucide-react';
+
+// Дефолтное распределение для верхней сетки: все умения из INITIAL_CATALOG,
+// не задействованные в INITIAL_SKILLS (дефолтной боевой раскладке), в порядке каталога.
+const getDefaultTopGridSkillIds = (): (string | null)[] => {
+  const initialSkillIdsSet = new Set(INITIAL_SKILLS.map(s => s.id));
+  const remainingIds = INITIAL_CATALOG
+    .filter(s => !initialSkillIdsSet.has(s.id))
+    .map(s => s.id);
+
+  const result: (string | null)[] = Array(24).fill(null);
+  remainingIds.forEach((id, idx) => {
+    if (idx < 24) result[idx] = id;
+  });
+  return result;
+};
 
 export const App: React.FC = () => {
   // Active Tab: "skills" (Панель умений) or "combos" (Панель комбо)
@@ -53,20 +69,12 @@ export const App: React.FC = () => {
       slotIndex: idx,
       key: def.slot,
       combo: def.combo,
-      skill: INITIAL_CATALOG[idx] || null
+      skill: INITIAL_SKILLS[idx] || null
     }));
   });
 
   // Top Grid: 24 squares (skill IDs or null)
-  const [topGridSkillIds, setTopGridSkillIds] = useState<(string | null)[]>(() => {
-    const initial: (string | null)[] = Array(24).fill(null);
-    INITIAL_CATALOG.forEach((skill, idx) => {
-      if (idx >= 12 && idx < 24) {
-        initial[idx] = skill.id;
-      }
-    });
-    return initial;
-  });
+  const [topGridSkillIds, setTopGridSkillIds] = useState<(string | null)[]>(getDefaultTopGridSkillIds);
 
   // Combo Chains (Dynamic chains & customizable steps)
   const [chains, setChains] = useState<ComboChain[]>(() => {
@@ -87,6 +95,7 @@ export const App: React.FC = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -105,7 +114,11 @@ export const App: React.FC = () => {
     const fetchConfig = () => {
       if (!window.pywebview?.api?.load_config) return;
       window.pywebview.api.load_config().then((res) => {
-        if (!res.ok || !res.config) return; // файла ещё нет — первый запуск, оставляем дефолт
+        if (!res.ok || !res.config) {
+          // файла ещё нет — первый запуск, оставляем дефолт
+          setTopGridSkillIds(getDefaultTopGridSkillIds());
+          return;
+        }
         const cfg = res.config;
 
         if (Array.isArray(cfg.hotkeySlots) && cfg.hotkeySlots.length === 12) {
@@ -151,9 +164,12 @@ export const App: React.FC = () => {
             ids[i] = typeof id === 'string' ? id : null;
           });
           setTopGridSkillIds(ids);
+        } else {
+          setTopGridSkillIds(getDefaultTopGridSkillIds());
         }
       }).catch((err) => {
         console.warn('load_config: не удалось восстановить конфигурацию', err);
+        setTopGridSkillIds(getDefaultTopGridSkillIds());
       });
     };
 
@@ -199,21 +215,25 @@ export const App: React.FC = () => {
   }, [chains]);
 
   // Full config object generator matching backend schema
-  const generateConfigObject = useCallback(() => {
+  const generateConfigObject = useCallback((
+    customSlots = slots,
+    customTopGrid = topGridSkillIds,
+    customChains = chains
+  ) => {
     return {
       "_README": "Конфигурация умений, слотов и боевых цепочек ротации для Throne and Liberty.",
       "exportDate": new Date().toISOString(),
-      "totalSlots": slots.length,
-      "topGridSkillIds": topGridSkillIds,
-      "hotkeySlots": slots.map((s, idx) => ({
+      "totalSlots": customSlots.length,
+      "topGridSkillIds": customTopGrid,
+      "hotkeySlots": customSlots.map((s, idx) => ({
         slot: s.key,
         slotIndex: idx + 1,
         combo: s.combo,
         skillId: s.skill ? s.skill.id : null,
         skillName: s.skill ? s.skill.name : "None"
       })),
-      "totalChains": chains.length,
-      "chains": chains.map(chain => ({
+      "totalChains": customChains.length,
+      "chains": customChains.map(chain => ({
         id: chain.id,
         name: chain.name,
         order: chain.order,
@@ -222,7 +242,7 @@ export const App: React.FC = () => {
         cooldownMaxSeconds: chain.cooldownMax ?? chain.cooldownMin ?? chain.cooldown ?? 0,
         stepsCount: chain.steps.length,
         steps: chain.steps.map((s, idx) => {
-          const boundSlot = s.skill ? slots.find(slot => slot.skill?.id === s.skill?.id) : null;
+          const boundSlot = s.skill ? customSlots.find(slot => slot.skill?.id === s.skill?.id) : null;
           const combo = boundSlot ? boundSlot.combo : (s.skill ? s.skill.defaultCombo : null);
           const slotKey = boundSlot ? boundSlot.key : (s.skill ? (DEFAULT_HOTKEY_SLOTS.find(h => h.combo === s.skill?.defaultCombo)?.slot || null) : null);
 
@@ -239,8 +259,12 @@ export const App: React.FC = () => {
   }, [slots, chains, topGridSkillIds]);
 
   // Backend Bridge: save_config(jsonString) autosave safeguard
-  const saveCurrentConfigToBackend = async () => {
-    const configObj = generateConfigObject();
+  const saveCurrentConfigToBackend = async (
+    customSlots = slots,
+    customTopGrid = topGridSkillIds,
+    customChains = chains
+  ) => {
+    const configObj = generateConfigObject(customSlots, customTopGrid, customChains);
     const configJson = JSON.stringify(configObj, null, 2);
     if (window.pywebview) {
       try {
@@ -249,9 +273,29 @@ export const App: React.FC = () => {
         console.warn('save_config auto-save warning:', err);
       }
     } else {
-      localStorage.setItem('tl_placed_slots', JSON.stringify(slots));
-      localStorage.setItem('tl_combo_chains', JSON.stringify(chains));
+      localStorage.setItem('tl_placed_slots', JSON.stringify(customSlots));
+      localStorage.setItem('tl_combo_chains', JSON.stringify(customChains));
     }
+  };
+
+  // Сброс: боевая панель умений полностью сбрасывается/очищается (12 слотов = null),
+  // а все 24 умения из каталога возвращаются в верхнюю панель
+  const handleResetToDefault = async () => {
+    const newSlots: PlacedSlot[] = DEFAULT_HOTKEY_SLOTS.map((def, idx) => ({
+      slotIndex: idx,
+      key: def.slot,
+      combo: def.combo,
+      skill: null
+    }));
+    const newTopGrid = INITIAL_CATALOG.map(s => s.id);
+
+    setSlots(newSlots);
+    setTopGridSkillIds(newTopGrid);
+    setShowResetConfirm(false);
+
+    // Сразу сохраняем сброшенную конфигурацию на диск
+    await saveCurrentConfigToBackend(newSlots, newTopGrid, chains);
+    setSuccessMessage('Боевая панель сброшена, все умения возвращены в библиотеку');
   };
 
   // Автосохранение [slots, chains, topGridSkillIds] на диск с debounce ~600мс.
@@ -587,6 +631,16 @@ export const App: React.FC = () => {
               </button>
             )}
 
+            {/* Reset to Default Button */}
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              disabled={isBotRunning || isTestRunning}
+              className="p-1 text-gray-400 hover:text-amber-300 hover:bg-[#1f222e] rounded border border-transparent hover:border-[#2f3547] transition cursor-pointer disabled:opacity-40"
+              title="Сбросить раскладку к дефолту"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
             {/* Download JSON backup */}
             <button
               onClick={handleExportJson}
@@ -598,6 +652,32 @@ export const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#14161f] border border-[#2b3040] rounded-xl p-3 max-w-[280px] w-full shadow-2xl flex flex-col gap-2.5">
+            <div className="flex items-center gap-2 text-amber-400">
+              <RotateCcw className="w-4 h-4 shrink-0" />
+              <h3 className="font-medium text-xs text-gray-100">Сбросить раскладку умений?</h3>
+            </div>
+            <div className="flex justify-end gap-1.5 pt-1 border-t border-[#222736]">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-2.5 py-1 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-[#1c202d] transition cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleResetToDefault}
+                className="px-2.5 py-1 rounded text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white transition shadow cursor-pointer flex items-center gap-1"
+              >
+                <span>Сбросить</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Status / Error Notifications */}
       {errorMessage && (
