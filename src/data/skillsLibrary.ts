@@ -10,13 +10,19 @@ export interface ActiveSkill {
   svgType: string;
 }
 
+// ВАЖНО: name/type здесь — РЕАЛЬНЫЕ названия скиллов Throne & Liberty
+// (сверено со скриншотами из игры: 12 Longbow + 12 Staff). id/defaultCombo/
+// svgType/color НЕ трогаем при переименовании — их меняли бы, только если
+// бы переставляли слоты, а name/type — чисто отображаемый текст, менять
+// который безопасно для уже собранных цепочек (slot/combo уже привязаны
+// вручную через drag-and-drop и не зависят от name).
 export const INITIAL_CATALOG: ActiveSkill[] = [
-  // Row 1 (6 skills)
+  // Longbow (12 skills)
   {
     id: "skill_1",
-    name: "Ледяная стрела",
+    name: "Второе дыхание",
     level: 15,
-    type: "Longbow / Frost",
+    type: "Longbow",
     defaultCombo: "RB+X",
     defaultCooldown: 8.0,
     color: "#38bdf8",
@@ -24,9 +30,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_2",
-    name: "Связывающая стрела",
+    name: "Знак жертвы",
     level: 15,
-    type: "Crossbow / Chain",
+    type: "Longbow",
     defaultCombo: "RB+Y",
     defaultCooldown: 8.0,
     color: "#f59e0b",
@@ -34,9 +40,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_3",
-    name: "Прицельный выстрел",
+    name: "Милость природы",
     level: 15,
-    type: "Longbow / Snipe",
+    type: "Longbow",
     defaultCombo: "RB+B",
     defaultCooldown: 8.0,
     color: "#ea580c",
@@ -44,9 +50,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_4",
-    name: "Ледяные сосульки",
+    name: "Множественный выстрел",
     level: 15,
-    type: "Staff / Ice Spikes",
+    type: "Longbow",
     defaultCombo: "RB+A",
     defaultCooldown: 8.0,
     color: "#0284c7",
@@ -54,9 +60,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_5",
-    name: "Длань природы",
+    name: "Навесная стрела",
     level: 15,
-    type: "Wand / Nature",
+    type: "Longbow",
     defaultCombo: "RT+X",
     defaultCooldown: 8.0,
     color: "#22c55e",
@@ -64,21 +70,19 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_6",
-    name: "Крюк из бездны",
+    name: "Опутывающая стрела",
     level: 15,
-    type: "Dagger / Pull",
+    type: "Longbow",
     defaultCombo: "RT+Y",
     defaultCooldown: 8.0,
     color: "#06b6d4",
     svgType: "abyss_hook"
   },
-
-  // Row 2 (6 skills)
   {
     id: "skill_7",
-    name: "Пронзающий выстрел",
+    name: "Очистительное прикосновение",
     level: 15,
-    type: "Longbow / Pierce",
+    type: "Longbow",
     defaultCombo: "RT+B",
     defaultCooldown: 8.0,
     color: "#64748b",
@@ -86,9 +90,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_8",
-    name: "Исцеляющие ладони",
+    name: "Полевая медицына",
     level: 15,
-    type: "Wand / Holy Heal",
+    type: "Longbow",
     defaultCombo: "RT+A",
     defaultCooldown: 8.0,
     color: "#10b981",
@@ -96,9 +100,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_9",
-    name: "Огненный хищник",
+    name: "Прорыв ветра",
     level: 15,
-    type: "Greatsword / Fire",
+    type: "Longbow",
     defaultCombo: "RT+DPAD_LEFT",
     defaultCooldown: 8.0,
     color: "#ef4444",
@@ -106,9 +110,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_10",
-    name: "Танец ветра",
+    name: "Стрела зари",
     level: 15,
-    type: "Wand / Leaf Storm",
+    type: "Longbow",
     defaultCombo: "RT+DPAD_UP",
     defaultCooldown: 8.0,
     color: "#84cc16",
@@ -116,9 +120,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_11",
-    name: "Стрела времени",
+    name: "Точный выстрел",
     level: 15,
-    type: "Longbow / CDR",
+    type: "Longbow",
     defaultCombo: "RT+DPAD_RIGHT",
     defaultCooldown: 8.0,
     color: "#14b8a6",
@@ -126,21 +130,21 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_12",
-    name: "Лучезарный залп",
+    name: "Штурмовая стрела",
     level: 15,
-    type: "Crossbow / Radiance",
+    type: "Longbow",
     defaultCombo: "RT+DPAD_DOWN",
     defaultCooldown: 8.0,
     color: "#38bdf8",
     svgType: "radiant_burst"
   },
 
-  // Row 3 (6 skills)
+  // Staff (12 skills)
   {
     id: "skill_13",
-    name: "Теневой серп",
+    name: "Внутренний покой",
     level: 15,
-    type: "Dagger / Shadow",
+    type: "Staff",
     defaultCombo: "RB+X",
     defaultCooldown: 8.0,
     color: "#6366f1",
@@ -148,9 +152,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_14",
-    name: "Костер стойкости",
+    name: "Зов спасения",
     level: 15,
-    type: "Sword & Shield / Camp",
+    type: "Staff",
     defaultCombo: "RB+Y",
     defaultCooldown: 8.0,
     color: "#d97706",
@@ -158,9 +162,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_15",
-    name: "Гравитационный вихрь",
+    name: "Карающий заряд",
     level: 15,
-    type: "Staff / Void Vortex",
+    type: "Staff",
     defaultCombo: "RB+B",
     defaultCooldown: 8.0,
     color: "#a855f7",
@@ -168,9 +172,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_16",
-    name: "Вспышка молнии",
+    name: "Ледяное копьё",
     level: 15,
-    type: "Staff / Lightning",
+    type: "Staff",
     defaultCombo: "RB+A",
     defaultCooldown: 8.0,
     color: "#c084fc",
@@ -178,9 +182,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_17",
-    name: "Призрачный дух",
+    name: "Метеор",
     level: 15,
-    type: "Dagger / Phantom",
+    type: "Staff",
     defaultCombo: "RT+X",
     defaultCooldown: 8.0,
     color: "#818cf8",
@@ -188,21 +192,19 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_18",
-    name: "Души павших",
+    name: "Морозная завеса",
     level: 15,
-    type: "Wand / Souls",
+    type: "Staff",
     defaultCombo: "RT+Y",
     defaultCooldown: 8.0,
     color: "#94a3b8",
     svgType: "soul_spirits"
   },
-
-  // Row 4 (6 skills)
   {
     id: "skill_19",
-    name: "Осколок льда",
+    name: "Обстрел пламенем",
     level: 15,
-    type: "Staff / Frost Shard",
+    type: "Staff",
     defaultCombo: "RT+B",
     defaultCooldown: 8.0,
     color: "#06b6d4",
@@ -210,9 +212,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_20",
-    name: "Сфера рассвета",
+    name: "Огненные заряды",
     level: 15,
-    type: "Wand / Solar Orb",
+    type: "Staff",
     defaultCombo: "RT+A",
     defaultCooldown: 8.0,
     color: "#eab308",
@@ -220,9 +222,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_21",
-    name: "Ледник",
+    name: "Пылающий разлом",
     level: 15,
-    type: "Staff / Glacier",
+    type: "Staff",
     defaultCombo: "RT+DPAD_LEFT",
     defaultCooldown: 8.0,
     color: "#38bdf8",
@@ -230,9 +232,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_22",
-    name: "Грозовой клинок",
+    name: "Сосредоточенный разум",
     level: 15,
-    type: "Greatsword / Thunder",
+    type: "Staff",
     defaultCombo: "RT+DPAD_UP",
     defaultCooldown: 8.0,
     color: "#f59e0b",
@@ -240,9 +242,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_23",
-    name: "Инфернальный вихрь",
+    name: "Холодная гробница",
     level: 15,
-    type: "Staff / Inferno",
+    type: "Staff",
     defaultCombo: "RT+DPAD_RIGHT",
     defaultCooldown: 8.0,
     color: "#dc2626",
@@ -250,9 +252,9 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
   },
   {
     id: "skill_24",
-    name: "Порыв бури",
+    name: "Цепная молния",
     level: 15,
-    type: "Crossbow / Gale",
+    type: "Staff",
     defaultCombo: "RT+DPAD_DOWN",
     defaultCooldown: 8.0,
     color: "#60a5fa",
