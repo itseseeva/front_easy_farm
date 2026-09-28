@@ -39,6 +39,7 @@ export const ComboSequence: React.FC<Props> = ({
   const [activeChainIndex, setActiveChainIndex] = useState(0);
   const [isPeriodicityTipHovered, setIsPeriodicityTipHovered] = useState(false);
   const [isMultiplierTipHovered, setIsMultiplierTipHovered] = useState(false);
+  const [isCastTimeTipHovered, setIsCastTimeTipHovered] = useState(false);
 
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
@@ -203,6 +204,26 @@ export const ComboSequence: React.FC<Props> = ({
           const current = s.repeatCount ?? 1;
           const next = current >= MAX_REPEAT ? 1 : current + 1;
           return { ...s, repeatCount: next };
+        })
+      };
+    });
+    onChainsChange(updated);
+  };
+
+  // Клик по бейджу времени каста — увеличивает на n + 1: 0(выкл) -> 1 -> 2 -> 3 -> 4 -> 5 -> 0.
+  const MAX_CAST_SECONDS = 5;
+  const handleCycleStepCastTime = (chainId: string, stepId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const updated = chains.map(c => {
+      if (c.id !== chainId) return c;
+      return {
+        ...c,
+        steps: c.steps.map(s => {
+          if (s.id !== stepId) return s;
+          const current = s.castTimeSeconds ?? 0;
+          const next = current >= MAX_CAST_SECONDS ? 0 : current + 1;
+          return { ...s, castTimeSeconds: next };
         })
       };
     });
@@ -495,9 +516,9 @@ export const ComboSequence: React.FC<Props> = ({
                 <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative transition">
                   {/* Уведомления в пустом месте справа вверху карточки (где нарисовано красным маркером):
                       Одинаковый размер, позиция и геометрия для эффекта бесшовного переключения */}
-                  {(isMultiplierTipHovered || isPeriodicityTipHovered) && (
+                  {(isMultiplierTipHovered || isPeriodicityTipHovered || isCastTimeTipHovered) && (
                     <div className="absolute top-2.5 right-3 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-                      <div className="w-[260px] h-[64px] p-2.5 rounded-xl bg-[#141824]/95 border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md flex flex-col justify-center">
+                      <div className="w-[280px] min-h-[64px] py-2 px-2.5 rounded-xl bg-[#141824]/95 border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md flex flex-col justify-center">
                         {isMultiplierTipHovered ? (
                           <>
                             <div className="flex items-center gap-1.5 mb-1">
@@ -512,7 +533,7 @@ export const ComboSequence: React.FC<Props> = ({
                               Показывает, сколько раз скил повторится в комбинации.
                             </p>
                           </>
-                        ) : (
+                        ) : isPeriodicityTipHovered ? (
                           <>
                             <div className="flex items-center gap-1.5 mb-1">
                               <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[9px] border border-yellow-400/40">
@@ -522,8 +543,22 @@ export const ComboSequence: React.FC<Props> = ({
                                 Периодичность
                               </span>
                             </div>
-                            <p className="text-[10px] leading-snug text-gray-200 font-normal line-clamp-2">
+                            <p className="text-[10px] leading-snug text-gray-200 font-normal">
                               Ставьте время отката самого долгого умения цепочки.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-mono font-bold text-[9px] border border-amber-400/40">
+                                0s...5s
+                              </span>
+                              <span className="font-semibold text-amber-300 text-[11px]">
+                                Время каста
+                              </span>
+                            </div>
+                            <p className="text-[10px] leading-tight text-gray-200 font-normal">
+                              Для долгих умений выставите время каста, чтобы скилл успел докастоваться до конца.
                             </p>
                           </>
                         )}
@@ -637,6 +672,23 @@ export const ComboSequence: React.FC<Props> = ({
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
                     </div>
+
+                    {/* Exclamation Tooltip 3: Cast Time
+                        Справа от мультипликатора: подсказка о времени каста для долгих способностей */}
+                    <div className="relative inline-flex items-center">
+                      <div
+                        onMouseEnter={() => setIsCastTimeTipHovered(true)}
+                        onMouseLeave={() => setIsCastTimeTipHovered(false)}
+                        className={`w-4 h-4 rounded-full flex items-center justify-center cursor-help transition ${
+                          isCastTimeTipHovered
+                            ? 'text-amber-300 bg-amber-400/20 scale-110 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                            : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-400/10'
+                        }`}
+                        title="Подсказка о времени каста"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Clear / Reset Skills in Chain */}
@@ -675,6 +727,7 @@ export const ComboSequence: React.FC<Props> = ({
                     const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
                     const isHovered = hoveredTarget?.chainId === chain.id && hoveredTarget?.stepId === step.id;
                     const isTargetForTip = isCurrent && isMultiplierTipHovered && idx === targetHighlightIdx && targetHighlightIdx !== -1;
+                    const isTargetForCastTip = isCurrent && isCastTimeTipHovered && idx === targetHighlightIdx && targetHighlightIdx !== -1;
 
                     return (
                       <div
@@ -696,6 +749,8 @@ export const ComboSequence: React.FC<Props> = ({
                         className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
                           isTargetForTip
                             ? 'ring-2 ring-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.5)] z-40'
+                            : isTargetForCastTip
+                            ? 'ring-2 ring-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.5)] z-40'
                             : isCasting
                             ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
                             : isHovered
@@ -735,6 +790,25 @@ export const ComboSequence: React.FC<Props> = ({
                             >
                               ✕
                             </button>
+
+                            {/* Cast-time badge, симметрично слева-снизу — циклит
+                                время каста кликами n + 1: (0 -> 1s -> 2s -> 3s -> 4s -> 5s -> 0) */}
+                            <div className="absolute bottom-1 left-1 z-30">
+                              <button
+                                type="button"
+                                onClick={(e) => handleCycleStepCastTime(chain.id, step.id, e)}
+                                title="Реальное время каста этого скилла в игре (клик: 0 -> 1s -> ... -> 5s -> 0)"
+                                className={`min-w-[18px] h-[18px] px-1 rounded font-mono font-bold text-[9px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 border backdrop-blur-[2px] ${
+                                  isTargetForCastTip
+                                    ? 'text-amber-200 scale-125 bg-amber-950/90 drop-shadow-[0_0_10px_rgba(245,158,11,1)] ring-1 ring-amber-400 border-amber-300'
+                                    : (step.castTimeSeconds ?? 0) > 0
+                                    ? 'bg-amber-600/90 hover:bg-amber-500 text-white shadow-[0_0_8px_rgba(245,158,11,0.6)] border-white/10'
+                                    : 'bg-black/60 hover:bg-black/90 text-gray-500 hover:text-gray-300 border-white/10'
+                                }`}
+                              >
+                                {(step.castTimeSeconds ?? 0) > 0 ? `${step.castTimeSeconds}s` : '0s'}
+                              </button>
+                            </div>
 
                             {/* Repeat-count badge в правом нижнем углу:
                                 при наведении становится жёлтым text-yellow-300;

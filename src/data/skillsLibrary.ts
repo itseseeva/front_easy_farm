@@ -284,6 +284,7 @@ export interface ChainStep {
   skill: ActiveSkill | null;
   cooldown: number; // in seconds
   repeatCount?: number; // сколько раз подряд нажать этот скилл (по умолчанию 1)
+  castTimeSeconds?: number; // реальное время каста этого скилла в игре, сек (0/не задано — обычная короткая пауза)
 }
 
 export interface ComboChain {

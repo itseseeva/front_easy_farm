@@ -155,6 +155,7 @@ export const App: React.FC = () => {
                 skill: s.skillId ? catalog.find(sk => sk.id === s.skillId) ?? null : null,
                 cooldown: 0,
                 repeatCount: s.repeatCount ?? 1,
+                castTimeSeconds: s.castTimeSeconds ?? 0,
               })),
             }))
           );
@@ -253,7 +254,8 @@ export const App: React.FC = () => {
             skillName: s.skill ? s.skill.name : "None",
             slot: slotKey,
             combo: combo,
-            repeatCount: s.repeatCount ?? 1
+            repeatCount: s.repeatCount ?? 1,
+            castTimeSeconds: s.castTimeSeconds ?? 0
           };
         })
       }))
