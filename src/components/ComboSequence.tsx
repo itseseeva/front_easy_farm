@@ -35,6 +35,14 @@ export const ComboSequence: React.FC<Props> = ({
   const [isOverCatalog, setIsOverCatalog] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ chainId: string; stepId: string; stepIndex: number } | null>(null);
 
+  // Дефолтное время каста скилла (например "Внутренний покой" = 5с)
+  // подставляется автоматически при размещении в шаг цепочки — не нужно
+  // каждый раз руками щёлкать бейдж "×N сек" для одного и того же скилла.
+  const withDefaultCastTime = (skill: ActiveSkill) => ({
+    skill,
+    castTimeSeconds: skill.defaultCastTimeSeconds ?? 0,
+  });
+
   // Active Chain for Swipe / Carousel View
   const [activeChainIndex, setActiveChainIndex] = useState(0);
   const [isPeriodicityTipHovered, setIsPeriodicityTipHovered] = useState(false);
@@ -252,7 +260,7 @@ export const ComboSequence: React.FC<Props> = ({
           ...c,
           steps: c.steps.map(s => {
             if (c.id === chainId && s.id === stepId) {
-              return { ...s, skill: selectedCatalogSkill };
+              return { ...s, ...withDefaultCastTime(selectedCatalogSkill) };
             }
             // Clear if duplicate in same or other chain
             if (s.skill?.id === selectedCatalogSkill.id) {
@@ -284,7 +292,7 @@ export const ComboSequence: React.FC<Props> = ({
         ...c,
         steps: c.steps.map(s => {
           if (c.id === chainId && s.id === stepId) {
-            return { ...s, skill };
+            return { ...s, ...withDefaultCastTime(skill) };
           }
           if (s.skill?.id === skill.id) {
             return { ...s, skill: null };
@@ -381,7 +389,7 @@ export const ComboSequence: React.FC<Props> = ({
             ...c,
             steps: c.steps.map(s => {
               if (c.id === targetChainId && s.id === targetStepId) {
-                return { ...s, skill };
+                return { ...s, ...withDefaultCastTime(skill) };
               }
               // Clear duplicate elsewhere
               if (s.skill?.id === skill.id) {

@@ -8,6 +8,7 @@ export interface ActiveSkill {
   color: string;
   customIcon?: string; // base64 or URL
   svgType: string;
+  defaultCastTimeSeconds?: number; // реальное время каста в игре по умолчанию (например 5 у долгого канала) — подставляется автоматически при размещении скилла в цепочку
 }
 
 // ВАЖНО: name/type здесь — РЕАЛЬНЫЕ названия скиллов Throne & Liberty
@@ -148,7 +149,8 @@ export const INITIAL_CATALOG: ActiveSkill[] = [
     defaultCombo: "RB+X",
     defaultCooldown: 8.0,
     color: "#6366f1",
-    svgType: "shadow_slash"
+    svgType: "shadow_slash",
+    defaultCastTimeSeconds: 5.0
   },
   {
     id: "skill_14",
