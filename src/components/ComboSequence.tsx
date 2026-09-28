@@ -37,6 +37,7 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Active Chain for Swipe / Carousel View
   const [activeChainIndex, setActiveChainIndex] = useState(0);
+  const [isPeriodicityTipHovered, setIsPeriodicityTipHovered] = useState(false);
   const [isMultiplierTipHovered, setIsMultiplierTipHovered] = useState(false);
 
   // Keep active index within valid bounds
@@ -492,6 +493,44 @@ export const ComboSequence: React.FC<Props> = ({
                 }}
               >
                 <div className="w-full bg-[#14161d] border border-[#272a36] rounded-xl p-2.5 sm:p-3 shadow-lg flex flex-col gap-2 relative transition">
+                  {/* Уведомления в пустом месте справа вверху карточки (где нарисовано красным маркером):
+                      Одинаковый размер, позиция и геометрия для эффекта бесшовного переключения */}
+                  {(isMultiplierTipHovered || isPeriodicityTipHovered) && (
+                    <div className="absolute top-2.5 right-3 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+                      <div className="w-[260px] h-[64px] p-2.5 rounded-xl bg-[#141824]/95 border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md flex flex-col justify-center">
+                        {isMultiplierTipHovered ? (
+                          <>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[9px] border border-yellow-400/40">
+                                x1 / x2 / x3
+                              </span>
+                              <span className="font-semibold text-yellow-300 text-[11px]">
+                                Мультипликатор
+                              </span>
+                            </div>
+                            <p className="text-[10px] leading-snug text-gray-200 font-normal">
+                              Показывает, сколько раз скил повторится в комбинации.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[9px] border border-yellow-400/40">
+                                CD
+                              </span>
+                              <span className="font-semibold text-yellow-300 text-[11px]">
+                                Периодичность
+                              </span>
+                            </div>
+                            <p className="text-[10px] leading-snug text-gray-200 font-normal line-clamp-2">
+                              Ставьте время отката самого долгого умения цепочки.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Chain Header & Parameters */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#232633] pb-2 text-xs">
                     {/* Left: Chain Title & Order */}
@@ -531,10 +570,20 @@ export const ComboSequence: React.FC<Props> = ({
                   </div>
 
                   {/* Chain Cooldown: single number input */}
-                  <div className="flex items-center gap-1.5 text-gray-400">
-                    <Clock className="w-3.5 h-3.5 text-gray-500" />
-                    <span>Периодичность раз в:</span>
-                    <div className="bg-[#101217] border border-[#2c3242] hover:border-[#3e465a] focus-within:border-emerald-500/70 rounded px-1.5 py-0.5 transition shadow-inner">
+                  <div className={`flex items-center gap-1.5 transition-colors duration-150 ${
+                    isPeriodicityTipHovered ? 'text-yellow-300 drop-shadow-[0_0_8px_rgba(253,224,71,0.6)]' : 'text-gray-400'
+                  }`}>
+                    <Clock className={`w-3.5 h-3.5 transition-colors duration-150 ${
+                      isPeriodicityTipHovered ? 'text-yellow-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.8)]' : 'text-gray-500'
+                    }`} />
+                    <span className={`transition-colors duration-150 font-medium ${
+                      isPeriodicityTipHovered ? 'text-yellow-300' : 'text-gray-400'
+                    }`}>
+                      Периодичность раз в:
+                    </span>
+                    <div className={`bg-[#101217] border rounded px-1.5 py-0.5 transition shadow-inner ${
+                      isPeriodicityTipHovered ? 'border-yellow-400/80 shadow-[0_0_8px_rgba(250,204,21,0.3)]' : 'border-[#2c3242] hover:border-[#3e465a] focus-within:border-emerald-500/70'
+                    }`}>
                       <input
                         type="number"
                         step="1"
@@ -549,29 +598,31 @@ export const ComboSequence: React.FC<Props> = ({
                         className="w-8 sm:w-9 bg-transparent text-gray-100 text-xs font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
-                    <span className="text-[10px] text-gray-500 select-none">сек</span>
+                    <span className={`text-[10px] select-none transition-colors duration-150 ${
+                      isPeriodicityTipHovered ? 'text-yellow-300' : 'text-gray-500'
+                    }`}>
+                      сек
+                    </span>
 
                     {/* Exclamation Tooltip 1: Periodicity */}
-                    <div className="relative group/tip inline-flex items-center">
-                      <div className="w-4 h-4 rounded-full flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 cursor-help transition">
+                    <div className="relative inline-flex items-center">
+                      <div
+                        onMouseEnter={() => setIsPeriodicityTipHovered(true)}
+                        onMouseLeave={() => setIsPeriodicityTipHovered(false)}
+                        className={`w-4 h-4 rounded-full flex items-center justify-center cursor-help transition ${
+                          isPeriodicityTipHovered
+                            ? 'text-amber-300 bg-amber-400/20 scale-110 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                            : 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+                        }`}
+                        title="Подсказка о периодичности"
+                      >
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
-                      </div>
-                      <div className="absolute bottom-[26px] right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 hidden group-hover/tip:flex flex-col w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-amber-400/80 text-[10px] leading-snug text-gray-200 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(251,191,36,0.25)] backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
-                        <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1 text-[11px]">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                          <span>Периодичность</span>
-                        </div>
-                        <p className="text-gray-200 font-normal">
-                          Ставьте время отката самого долгого умения цепочки, чтобы комбо повторялось без пропуска скиллов.
-                        </p>
-                        {/* Стрелочка-хвостик сообщения (speech bubble tail) */}
-                        <div className="absolute -bottom-1.5 right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-amber-400/80 shadow-md"></div>
                       </div>
                     </div>
 
-                    {/* Exclamation Tooltip 2: Multiplier (активирует вылезающую плашку:
-                        Условие 1: если на панели комбо нету скилов — появляется прямо из знака восклицания.
-                        Условие 2: если есть скилы — подсвечивает и выводит из 3-го скила (или последнего, если меньше 3). */}
+                    {/* Exclamation Tooltip 2: Multiplier
+                        При наведении на знак восклицания в пустом месте справа вверху карточки
+                        появляется аккуратное стильное уведомление в рамке без треугольника, а значок x1 подсвечивается */}
                     <div className="relative inline-flex items-center">
                       <div
                         onMouseEnter={() => setIsMultiplierTipHovered(true)}
@@ -585,27 +636,6 @@ export const ComboSequence: React.FC<Props> = ({
                       >
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
-
-                      {/* Условие 1: если на панели комбо вообще нету скилов — выводим уведомление прямо из знака восклицания */}
-                      {isMultiplierTipHovered && chain.steps.filter(s => s.skill !== null).length === 0 && (
-                        <div className="absolute bottom-[26px] right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                          <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-[10px] leading-snug text-gray-200 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
-                                x1 / x2 / x3
-                              </span>
-                              <span className="font-semibold text-yellow-300 text-[11px]">
-                                Мультипликатор
-                              </span>
-                            </div>
-                            <p className="text-gray-200 font-normal">
-                              Показывает, сколько раз скил повторится в комбинации.
-                            </p>
-                            {/* Стрелочка-хвостик сообщения */}
-                            <div className="absolute -bottom-1.5 right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-yellow-400/80 shadow-md"></div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -708,7 +738,7 @@ export const ComboSequence: React.FC<Props> = ({
 
                             {/* Repeat-count badge в правом нижнем углу:
                                 при наведении становится жёлтым text-yellow-300;
-                                при наведении на знак восклицания подсвечивается и выпускает бабл с хвостиком */}
+                                при наведении на знак восклицания подсвечивается золотом */}
                             <div className="absolute bottom-1 right-1 z-30">
                               <button
                                 type="button"
@@ -716,7 +746,7 @@ export const ComboSequence: React.FC<Props> = ({
                                 title="Количество повторов нажатия (клик: 1 -> 2 -> 3 -> 1)"
                                 className={`min-w-[18px] h-[18px] px-1 rounded font-mono font-bold text-[9px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 bg-black/60 hover:bg-black/90 backdrop-blur-[2px] ${
                                   isTargetForTip
-                                    ? 'text-yellow-300 scale-125 bg-black/95 drop-shadow-[0_0_10px_rgba(253,224,71,1)]'
+                                    ? 'text-yellow-300 scale-125 bg-black/95 drop-shadow-[0_0_10px_rgba(253,224,71,1)] ring-1 ring-yellow-400'
                                     : (step.repeatCount ?? 1) > 1
                                     ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)] scale-105 hover:text-yellow-300'
                                     : 'text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] hover:text-yellow-300 hover:drop-shadow-[0_0_8px_rgba(253,224,71,0.95)]'
@@ -724,63 +754,6 @@ export const ComboSequence: React.FC<Props> = ({
                               >
                                 x{step.repeatCount ?? 1}
                               </button>
-
-                              {/* Всплывающее окошко-сообщение (speech bubble), вылезающее ровно из значка мультипликатора x1:
-                                  Левый нижний угол плашки со стрелочкой опирается строго на значок x1,
-                                  а сама плашка уходит вправо поверх соседних слотов */}
-                              {isTargetForTip && (
-                                <div className="absolute bottom-[28px] left-[10px] z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-                                  <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
-                                    {/* Header с иконкой */}
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
-                                        x1 / x2 / x3
-                                      </span>
-                                      <span className="font-semibold text-yellow-300 text-[11px]">
-                                        Мультипликатор
-                                      </span>
-                                    </div>
-
-                                    {/* Текст уведомления */}
-                                    <p className="text-[10px] leading-snug text-gray-200 font-normal">
-                                      Показывает, сколько раз скил повторится в комбинации.
-                                    </p>
-
-                                    {/* Стильный, ровный дизайнерский треугольник-указатель (хвостик speech bubble),
-                                        направленный строго в значок x1, с идеальной геометрией и ровной желтой рамкой */}
-                                    <div className="absolute -bottom-[11px] left-2 w-5 h-3 overflow-visible pointer-events-none">
-                                      <svg
-                                        viewBox="0 0 20 12"
-                                        fill="none"
-                                        className="w-full h-full drop-shadow-md"
-                                      >
-                                        {/* Заливка хвостика темным цветом тела плашки */}
-                                        <polygon
-                                          points="0,-1 16,-1 2,11"
-                                          fill="#141824"
-                                        />
-                                        {/* Ровные, четкие грани треугольника, сходящиеся в кончик */}
-                                        <polyline
-                                          points="0,0 2,11 16,0"
-                                          stroke="rgba(250, 204, 21, 0.85)"
-                                          strokeWidth="1.2"
-                                          strokeLinejoin="round"
-                                          strokeLinecap="round"
-                                        />
-                                        {/* Скрытие разделителя между плашкой и треугольником */}
-                                        <line
-                                          x1="0.5"
-                                          y1="0"
-                                          x2="15.5"
-                                          y2="0"
-                                          stroke="#141824"
-                                          strokeWidth="2.5"
-                                        />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </>
                         ) : (
