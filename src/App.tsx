@@ -61,7 +61,10 @@ export const App: React.FC = () => {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === 12) {
-          return parsed;
+          return parsed.map((item: any) => ({
+            ...item,
+            skill: item.skill ? INITIAL_CATALOG.find(c => c.id === item.skill.id) ?? item.skill : null
+          }));
         }
       } catch (e) {}
     }
@@ -207,6 +210,33 @@ export const App: React.FC = () => {
   // Save changes to localStorage
   useEffect(() => {
     localStorage.setItem('tl_skills_catalog', JSON.stringify(catalog));
+  }, [catalog]);
+
+  // Синхронизация с актуальным каталогом: раньше подтягивали только
+  // customIcon, а остальные поля (в первую очередь name) оставались
+  // "замороженными" в localStorage навсегда — отсюда баг, когда картинка
+  // скилла верная (она привязана к id, он не менялся), а подпись/название
+  // при наведении — старое, ещё с ДО переименования каталога. Теперь
+  // берём из каталога объект целиком по id — тогда любое поле само
+  // подтягивается свежим при каждом изменении catalog, а не только иконка.
+  useEffect(() => {
+    setSlots(prev =>
+      prev.map(slot => {
+        if (!slot.skill) return slot;
+        const matching = catalog.find(c => c.id === slot.skill!.id);
+        return matching ? { ...slot, skill: matching } : slot;
+      })
+    );
+    setChains(prev =>
+      prev.map(chain => ({
+        ...chain,
+        steps: chain.steps.map(step => {
+          if (!step.skill) return step;
+          const matching = catalog.find(c => c.id === step.skill!.id);
+          return matching ? { ...step, skill: matching } : step;
+        })
+      }))
+    );
   }, [catalog]);
 
   useEffect(() => {

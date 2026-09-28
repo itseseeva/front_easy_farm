@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ActiveSkill, INITIAL_CATALOG } from '../data/skillsLibrary';
 import { SkillIconRenderer } from './SkillIconRenderer';
 import { SkillPickerModal } from './SkillPickerModal';
@@ -52,6 +52,23 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
     }
     onTopGridChange(newIds);
   };
+
+  // Синхронизация с актуальным каталогом: раньше подтягивали только
+  // customIcon, а остальные поля (в первую очередь name) оставались
+  // "замороженными" в localStorage навсегда — отсюда баг, когда картинка
+  // скилла верная (она привязана к id, он не менялся), а подпись/название
+  // при наведении — старое, ещё с ДО переименования каталога. Теперь
+  // берём из каталога объект целиком по id — тогда любое поле само
+  // подтягивается свежим при каждом изменении catalog, а не только иконка.
+  useEffect(() => {
+    setTopSlots(
+      topSlots.map(slot => {
+        if (!slot) return null;
+        const matching = catalog.find(c => c.id === slot.id);
+        return matching ?? slot;
+      })
+    );
+  }, [catalog]);
 
   // Active drag state
   const [activeDrag, setActiveDrag] = useState<DragSource | null>(null);
