@@ -163,7 +163,6 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
                     <SkillIconRenderer
                       skill={skill}
                       showLevel={false}
-                      onUploadImage={onUploadImage}
                     />
                   </div>
 

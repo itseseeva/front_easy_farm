@@ -569,7 +569,9 @@ export const ComboSequence: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    {/* Exclamation Tooltip 2: Multiplier (активирует вылезающую плашку из значка мультипликатора на скилле) */}
+                    {/* Exclamation Tooltip 2: Multiplier (активирует вылезающую плашку:
+                        Условие 1: если на панели комбо нету скилов — появляется прямо из знака восклицания.
+                        Условие 2: если есть скилы — подсвечивает и выводит из 3-го скила (или последнего, если меньше 3). */}
                     <div className="relative inline-flex items-center">
                       <div
                         onMouseEnter={() => setIsMultiplierTipHovered(true)}
@@ -579,10 +581,31 @@ export const ComboSequence: React.FC<Props> = ({
                             ? 'text-yellow-300 bg-yellow-400/20 scale-110 shadow-[0_0_8px_rgba(253,224,71,0.6)]'
                             : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10'
                         }`}
-                        title="Наведите, чтобы увидеть подсказку у значка повторов"
+                        title="Подсказка о мультипликаторе"
                       >
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
+
+                      {/* Условие 1: если на панели комбо вообще нету скилов — выводим уведомление прямо из знака восклицания */}
+                      {isMultiplierTipHovered && chain.steps.filter(s => s.skill !== null).length === 0 && (
+                        <div className="absolute bottom-[26px] right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                          <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-[10px] leading-snug text-gray-200 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
+                                x1 / x2 / x3
+                              </span>
+                              <span className="font-semibold text-yellow-300 text-[11px]">
+                                Мультипликатор
+                              </span>
+                            </div>
+                            <p className="text-gray-200 font-normal">
+                              Показывает, сколько раз скил повторится в комбинации.
+                            </p>
+                            {/* Стрелочка-хвостик сообщения */}
+                            <div className="absolute -bottom-1.5 right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-yellow-400/80 shadow-md"></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -611,15 +634,17 @@ export const ComboSequence: React.FC<Props> = ({
               {/* Chain Steps Squares */}
               <div className="flex flex-wrap items-center gap-1.5 w-full">
                 {(() => {
-                  // Найдём первый шаг с умением в текущей цепочке, чтобы стрелочка-хвостик вылезала из его значка мультипликатора
+                  // Условия вывода уведомления:
+                  // 1. Если на панели комбо вообще нет скилов — уведомление показывается из знака восклицания.
+                  // 2. Если есть скилы — показывается из значка x1 скила, раскрываясь вправо поверх соседних слотов (как на скриншоте)
                   const firstSkillIdx = chain.steps.findIndex(s => s.skill !== null);
-                  const targetHighlightIdx = firstSkillIdx !== -1 ? firstSkillIdx : 0;
+                  const targetHighlightIdx = firstSkillIdx !== -1 ? firstSkillIdx : -1;
 
                   return chain.steps.map((step, idx) => {
                     const hasSkill = step.skill !== null;
                     const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
                     const isHovered = hoveredTarget?.chainId === chain.id && hoveredTarget?.stepId === step.id;
-                    const isTargetForTip = isCurrent && isMultiplierTipHovered && idx === targetHighlightIdx;
+                    const isTargetForTip = isCurrent && isMultiplierTipHovered && idx === targetHighlightIdx && targetHighlightIdx !== -1;
 
                     return (
                       <div
@@ -684,46 +709,79 @@ export const ComboSequence: React.FC<Props> = ({
                             {/* Repeat-count badge в правом нижнем углу:
                                 при наведении становится жёлтым text-yellow-300;
                                 при наведении на знак восклицания подсвечивается и выпускает бабл с хвостиком */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleCycleStepRepeat(chain.id, step.id, e)}
-                              title="Количество повторов нажатия (клик: 1 -> 2 -> 3 -> 1)"
-                              className={`absolute bottom-1 right-1 z-30 min-w-[18px] h-[18px] px-1 rounded font-mono font-bold text-[9px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 bg-black/60 hover:bg-black/90 backdrop-blur-[2px] ${
-                                isTargetForTip
-                                  ? 'text-yellow-300 scale-125 bg-black/95 drop-shadow-[0_0_10px_rgba(253,224,71,1)]'
-                                  : (step.repeatCount ?? 1) > 1
-                                  ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)] scale-105 hover:text-yellow-300'
-                                  : 'text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] hover:text-yellow-300 hover:drop-shadow-[0_0_8px_rgba(253,224,71,0.95)]'
-                              }`}
-                            >
-                              x{step.repeatCount ?? 1}
-                            </button>
+                            <div className="absolute bottom-1 right-1 z-30">
+                              <button
+                                type="button"
+                                onClick={(e) => handleCycleStepRepeat(chain.id, step.id, e)}
+                                title="Количество повторов нажатия (клик: 1 -> 2 -> 3 -> 1)"
+                                className={`min-w-[18px] h-[18px] px-1 rounded font-mono font-bold text-[9px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 bg-black/60 hover:bg-black/90 backdrop-blur-[2px] ${
+                                  isTargetForTip
+                                    ? 'text-yellow-300 scale-125 bg-black/95 drop-shadow-[0_0_10px_rgba(253,224,71,1)]'
+                                    : (step.repeatCount ?? 1) > 1
+                                    ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)] scale-105 hover:text-yellow-300'
+                                    : 'text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] hover:text-yellow-300 hover:drop-shadow-[0_0_8px_rgba(253,224,71,0.95)]'
+                                }`}
+                              >
+                                x{step.repeatCount ?? 1}
+                              </button>
 
-                            {/* Всплывающее окошко-сообщение (speech bubble) со стрелочкой/хвостиком,
-                                вылезающее прямо из значка мультипликатора */}
-                            {isTargetForTip && (
-                              <div className="absolute bottom-[26px] right-0 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-                                <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
-                                  {/* Header с иконкой */}
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
-                                      x1 / x2 / x3
-                                    </span>
-                                    <span className="font-semibold text-yellow-300 text-[11px]">
-                                      Мультипликатор
-                                    </span>
+                              {/* Всплывающее окошко-сообщение (speech bubble), вылезающее ровно из значка мультипликатора x1:
+                                  Левый нижний угол плашки со стрелочкой опирается строго на значок x1,
+                                  а сама плашка уходит вправо поверх соседних слотов */}
+                              {isTargetForTip && (
+                                <div className="absolute bottom-[28px] left-[10px] z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+                                  <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
+                                    {/* Header с иконкой */}
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
+                                        x1 / x2 / x3
+                                      </span>
+                                      <span className="font-semibold text-yellow-300 text-[11px]">
+                                        Мультипликатор
+                                      </span>
+                                    </div>
+
+                                    {/* Текст уведомления */}
+                                    <p className="text-[10px] leading-snug text-gray-200 font-normal">
+                                      Показывает, сколько раз скил повторится в комбинации.
+                                    </p>
+
+                                    {/* Стильный, ровный дизайнерский треугольник-указатель (хвостик speech bubble),
+                                        направленный строго в значок x1, с идеальной геометрией и ровной желтой рамкой */}
+                                    <div className="absolute -bottom-[11px] left-2 w-5 h-3 overflow-visible pointer-events-none">
+                                      <svg
+                                        viewBox="0 0 20 12"
+                                        fill="none"
+                                        className="w-full h-full drop-shadow-md"
+                                      >
+                                        {/* Заливка хвостика темным цветом тела плашки */}
+                                        <polygon
+                                          points="0,-1 16,-1 2,11"
+                                          fill="#141824"
+                                        />
+                                        {/* Ровные, четкие грани треугольника, сходящиеся в кончик */}
+                                        <polyline
+                                          points="0,0 2,11 16,0"
+                                          stroke="rgba(250, 204, 21, 0.85)"
+                                          strokeWidth="1.2"
+                                          strokeLinejoin="round"
+                                          strokeLinecap="round"
+                                        />
+                                        {/* Скрытие разделителя между плашкой и треугольником */}
+                                        <line
+                                          x1="0.5"
+                                          y1="0"
+                                          x2="15.5"
+                                          y2="0"
+                                          stroke="#141824"
+                                          strokeWidth="2.5"
+                                        />
+                                      </svg>
+                                    </div>
                                   </div>
-
-                                  {/* Текст уведомления (лаконичный, только до первой точки) */}
-                                  <p className="text-[10px] leading-snug text-gray-200 font-normal">
-                                    Показывает, сколько раз скил повторится в комбинации.
-                                  </p>
-
-                                  {/* Стрелочка-хвостик сообщения в правом нижнем углу (указывает ровно на значок x1) */}
-                                  <div className="absolute -bottom-1.5 right-2.5 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-yellow-400/80 shadow-md"></div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </>
                         ) : (
                           /* Empty Slot "+" & "Пусто" */
