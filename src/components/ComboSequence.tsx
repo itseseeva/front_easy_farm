@@ -761,6 +761,7 @@ export const ComboSequence: React.FC<Props> = ({
                         }}
                         onDrop={(e) => handleDropOnStep(e, chain.id, step.id)}
                         onClick={() => handleStepClick(chain.id, step.id, idx + 1)}
+                        title={hasSkill && step.skill ? `${step.skill.name} (${step.skill.type})` : undefined}
                         className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
                           isTargetForTip
                             ? 'ring-2 ring-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.5)] z-40'
@@ -792,10 +793,12 @@ export const ComboSequence: React.FC<Props> = ({
 
                         {hasSkill && step.skill ? (
                           <>
-                            <SkillIconRenderer
-                              skill={step.skill}
-                              showLevel={false}
-                            />
+                            <div className="w-full h-full relative rounded-md overflow-hidden">
+                              <SkillIconRenderer
+                                skill={step.skill}
+                                showLevel={false}
+                              />
+                            </div>
 
                             {/* Hover Remove Skill button */}
                             <button
@@ -950,16 +953,17 @@ export const ComboSequence: React.FC<Props> = ({
                   onDragStart={(e) => handleDragStartFromCatalog(e, skill)}
                   onDragEnd={handleDragEnd}
                   onClick={() => setSelectedCatalogSkill(selectedCatalogSkill?.id === skill.id ? null : skill)}
-                  className={`aspect-square rounded p-0.5 relative cursor-pointer hover:border-[#4d566b] transition bg-[#171922] border ${
+                  className={`group aspect-square rounded p-0.5 relative cursor-pointer hover:border-[#4d566b] transition bg-[#171922] border ${
                     isSelected ? 'ring-2 ring-gray-200 border-white' : 'border-[#272b38]'
                   }`}
                   title={`${skill.name} (${skill.defaultCooldown}с)`}
                 >
-                  <SkillIconRenderer
-                    skill={skill}
-                    showLevel={false}
-                    onUploadImage={onUploadImage}
-                  />
+                  <div className="w-full h-full relative rounded overflow-hidden">
+                    <SkillIconRenderer
+                      skill={skill}
+                      showLevel={false}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -980,7 +984,6 @@ export const ComboSequence: React.FC<Props> = ({
         subtitle="Нажмите на умение с боевой панели, чтобы добавить его в этот шаг"
         catalog={activePanelSkills}
         placedSkillIds={placedSkillIds}
-        onUploadImage={onUploadImage}
       />
     </div>
   );

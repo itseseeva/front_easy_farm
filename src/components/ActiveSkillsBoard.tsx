@@ -434,7 +434,8 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                       }}
                       onDrop={(e) => handleDropOnTopSquare(e, globalIdx)}
                       onClick={() => handleCellClick('top', globalIdx)}
-                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative cursor-grab active:cursor-grabbing transition-all duration-150 group select-none shadow-md shrink-0 overflow-hidden ${
+                      title={`${skill.name} (${skill.type})`}
+                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative cursor-grab active:cursor-grabbing transition-all duration-150 group select-none shadow-md shrink-0 ${
                         isSelected
                           ? 'ring-2 ring-[#e2e8f0] shadow-[0_0_12px_rgba(255,255,255,0.3)] scale-105 z-20'
                           : isHovered
@@ -442,15 +443,21 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                           : 'border border-[#2d3343] hover:border-[#4d566b] hover:shadow-lg'
                       }`}
                       style={{
-                        background: 'linear-gradient(145deg, #1c1f2b, #12141c)',
-                        contain: 'paint'
+                        background: 'linear-gradient(145deg, #1c1f2b, #12141c)'
                       }}
                     >
-                      <div className="w-full h-full relative">
+                      <div className="w-full h-full relative rounded-md overflow-hidden">
                         <SkillIconRenderer
                           skill={skill}
                           showLevel={false}
                         />
+
+                        {/* Yellow Skill Name overlay inside the square on hover (мягкое лёгкое затемнение) */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-1 text-center pointer-events-none z-30">
+                          <span className="text-yellow-300 font-bold text-[10px] sm:text-[11px] leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] line-clamp-3">
+                            {skill.name}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -532,6 +539,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                     onDrop={(e) => handleDropOnBottomSlot(e, globalSlotIdx)}
                     onClick={() => handleCellClick('bottom', globalSlotIdx)}
+                    title={hasSkill && slot.skill ? `${slot.skill.name} (${slot.skill.type})` : undefined}
                     className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 cursor-pointer ${
                       isCasting
                         ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
@@ -555,7 +563,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                   >
                     {hasSkill && slot.skill ? (
-                      <div className="w-full h-full relative">
+                      <div className="w-full h-full relative rounded-md overflow-hidden">
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
@@ -574,6 +582,13 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         >
                           ✕
                         </button>
+
+                        {/* Yellow Skill Name overlay inside the square on hover (мягкое лёгкое затемнение) */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-1 text-center pointer-events-none z-20">
+                          <span className="text-yellow-300 font-bold text-[10px] sm:text-[11px] leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] line-clamp-3">
+                            {slot.skill.name}
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       /* Empty Slot Style */
@@ -621,6 +636,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                     onDrop={(e) => handleDropOnBottomSlot(e, globalSlotIdx)}
                     onClick={() => handleCellClick('bottom', globalSlotIdx)}
+                    title={hasSkill && slot.skill ? `${slot.skill.name} (${slot.skill.type})` : undefined}
                     className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 cursor-pointer ${
                       isCasting
                         ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
@@ -644,7 +660,7 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                     }}
                   >
                     {hasSkill && slot.skill ? (
-                      <div className="w-full h-full relative">
+                      <div className="w-full h-full relative rounded-md overflow-hidden">
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
@@ -663,6 +679,13 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         >
                           ✕
                         </button>
+
+                        {/* Yellow Skill Name overlay inside the square on hover (мягкое лёгкое затемнение) */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-1 text-center pointer-events-none z-20">
+                          <span className="text-yellow-300 font-bold text-[10px] sm:text-[11px] leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)] line-clamp-3">
+                            {slot.skill.name}
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       /* Empty Slot Style */

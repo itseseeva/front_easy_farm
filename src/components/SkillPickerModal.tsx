@@ -159,11 +159,18 @@ export const SkillPickerModal: React.FC<SkillPickerModalProps> = ({
                   }`}
                 >
                   {/* Skill Icon */}
-                  <div className="w-full h-full relative">
+                  <div className="w-full h-full relative rounded overflow-hidden">
                     <SkillIconRenderer
                       skill={skill}
                       showLevel={false}
                     />
+
+                    {/* Yellow Skill Name overlay inside the square on hover */}
+                    <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-1 text-center pointer-events-none z-20">
+                      <span className="text-yellow-300 font-bold text-[10px] sm:text-[11px] leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] line-clamp-3">
+                        {skill.name}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Placed indicator (green dot on panel) */}
