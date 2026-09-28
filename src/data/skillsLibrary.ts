@@ -283,6 +283,7 @@ export interface ChainStep {
   id: string;
   skill: ActiveSkill | null;
   cooldown: number; // in seconds
+  repeatCount?: number; // сколько раз подряд нажать этот скилл (по умолчанию 1)
 }
 
 export interface ComboChain {

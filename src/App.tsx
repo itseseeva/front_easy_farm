@@ -151,15 +151,10 @@ export const App: React.FC = () => {
               ),
               triggerAfterChainId: c.triggerAfter,
               steps: (c.steps || []).map((s: any) => ({
-                // Файл не хранит оригинальный id шага — пересобираем его из
-                // id цепочки и порядкового номера, этого достаточно для
-                // ключей React и подсветки во время теста ротации.
                 id: `${c.id}_step${s.stepIndex}`,
                 skill: s.skillId ? catalog.find(sk => sk.id === s.skillId) ?? null : null,
-                // Кулдаун конкретного шага не сохраняется в файле — реальный
-                // кулдаун цепочки для бота это cooldownMin/cooldownMax выше,
-                // это поле только для отображения в UI.
                 cooldown: 0,
+                repeatCount: s.repeatCount ?? 1,
               })),
             }))
           );
@@ -257,7 +252,8 @@ export const App: React.FC = () => {
             skillId: s.skill ? s.skill.id : null,
             skillName: s.skill ? s.skill.name : "None",
             slot: slotKey,
-            combo: combo
+            combo: combo,
+            repeatCount: s.repeatCount ?? 1
           };
         })
       }))

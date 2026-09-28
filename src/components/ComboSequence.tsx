@@ -37,6 +37,7 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Active Chain for Swipe / Carousel View
   const [activeChainIndex, setActiveChainIndex] = useState(0);
+  const [isMultiplierTipHovered, setIsMultiplierTipHovered] = useState(false);
 
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
@@ -183,6 +184,26 @@ export const ComboSequence: React.FC<Props> = ({
         };
       }
       return c;
+    });
+    onChainsChange(updated);
+  };
+
+  // Клик по бейджу "xN": циклит 1 -> 2 -> 3 -> 1 (максимум 3 повтора)
+  const handleCycleStepRepeat = (chainId: string, stepId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const MAX_REPEAT = 3;
+    const updated = chains.map(c => {
+      if (c.id !== chainId) return c;
+      return {
+        ...c,
+        steps: c.steps.map(s => {
+          if (s.id !== stepId) return s;
+          const current = s.repeatCount ?? 1;
+          const next = current >= MAX_REPEAT ? 1 : current + 1;
+          return { ...s, repeatCount: next };
+        })
+      };
     });
     onChainsChange(updated);
   };
@@ -393,6 +414,7 @@ export const ComboSequence: React.FC<Props> = ({
           <span className="text-[10px] text-gray-500 font-mono">
             ({chains.length})
           </span>
+
           {chains.length > 1 && (
             <div className="flex items-center gap-1 bg-[#101217] p-0.5 rounded-lg border border-[#232736] ml-1">
               {chains.map((c, i) => (
@@ -529,21 +551,37 @@ export const ComboSequence: React.FC<Props> = ({
                     </div>
                     <span className="text-[10px] text-gray-500 select-none">сек</span>
 
-                    {/* Exclamation Tooltip (Top & Compact) */}
+                    {/* Exclamation Tooltip 1: Periodicity */}
                     <div className="relative group/tip inline-flex items-center">
                       <div className="w-4 h-4 rounded-full flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 cursor-help transition">
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
-                      <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 hidden group-hover/tip:flex flex-col w-48 sm:w-52 p-2 rounded-lg bg-[#151821]/95 border border-[#373e52] text-[10px] leading-snug text-gray-200 shadow-2xl backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
-                        <div className="font-semibold text-amber-300 flex items-center gap-1 mb-1 text-[10px]">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
+                      <div className="absolute bottom-[26px] right-0 sm:left-1/2 sm:-translate-x-1/2 mb-1.5 hidden group-hover/tip:flex flex-col w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-amber-400/80 text-[10px] leading-snug text-gray-200 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(251,191,36,0.25)] backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
+                        <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1 text-[11px]">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           <span>Периодичность</span>
                         </div>
-                        <p className="text-gray-300 font-normal">
+                        <p className="text-gray-200 font-normal">
                           Ставьте время отката самого долгого умения цепочки, чтобы комбо повторялось без пропуска скиллов.
                         </p>
-                        {/* Little triangle arrow pointing down */}
-                        <div className="absolute top-full right-1.5 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 -mt-px w-2 h-2 rotate-45 bg-[#151821] border-r border-b border-[#373e52]"></div>
+                        {/* Стрелочка-хвостик сообщения (speech bubble tail) */}
+                        <div className="absolute -bottom-1.5 right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-amber-400/80 shadow-md"></div>
+                      </div>
+                    </div>
+
+                    {/* Exclamation Tooltip 2: Multiplier (активирует вылезающую плашку из значка мультипликатора на скилле) */}
+                    <div className="relative inline-flex items-center">
+                      <div
+                        onMouseEnter={() => setIsMultiplierTipHovered(true)}
+                        onMouseLeave={() => setIsMultiplierTipHovered(false)}
+                        className={`w-4 h-4 rounded-full flex items-center justify-center cursor-help transition ${
+                          isMultiplierTipHovered
+                            ? 'text-yellow-300 bg-yellow-400/20 scale-110 shadow-[0_0_8px_rgba(253,224,71,0.6)]'
+                            : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10'
+                        }`}
+                        title="Наведите, чтобы увидеть подсказку у значка повторов"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
                     </div>
                   </div>
@@ -572,95 +610,147 @@ export const ComboSequence: React.FC<Props> = ({
 
               {/* Chain Steps Squares */}
               <div className="flex flex-wrap items-center gap-1.5 w-full">
-                {chain.steps.map((step, idx) => {
-                  const hasSkill = step.skill !== null;
-                  const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
-                  const isHovered = hoveredTarget?.chainId === chain.id && hoveredTarget?.stepId === step.id;
+                {(() => {
+                  // Найдём первый шаг с умением в текущей цепочке, чтобы стрелочка-хвостик вылезала из его значка мультипликатора
+                  const firstSkillIdx = chain.steps.findIndex(s => s.skill !== null);
+                  const targetHighlightIdx = firstSkillIdx !== -1 ? firstSkillIdx : 0;
 
-                  return (
-                    <div
-                      key={step.id}
-                      draggable={hasSkill}
-                      onDragStart={(e) => handleDragStartFromStep(e, chain.id, step.id, idx)}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        if (hoveredTarget?.stepId !== step.id) {
-                          setHoveredTarget({ chainId: chain.id, stepId: step.id });
-                        }
-                      }}
-                      onDragLeave={() => {
-                        if (hoveredTarget?.stepId === step.id) setHoveredTarget(null);
-                      }}
-                      onDrop={(e) => handleDropOnStep(e, chain.id, step.id)}
-                      onClick={() => handleStepClick(chain.id, step.id, idx + 1)}
-                      className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
-                        isCasting
-                          ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
-                          : isHovered
-                          ? 'ring-2 ring-gray-300 scale-102 z-10 bg-[#1c202d]'
-                          : hasSkill
-                          ? 'border border-[#384052] hover:border-[#4f5b75] cursor-grab active:cursor-grabbing'
-                          : selectedCatalogSkill
-                          ? 'border border-[#4fb0c9]/60 hover:border-[#4fb0c9] bg-[#161a24] cursor-pointer'
-                          : 'border border-[#262b38] hover:border-[#384052] hover:bg-[#161821]'
-                      }`}
-                      style={{
-                        background: hasSkill
-                          ? 'linear-gradient(145deg, #1b1e2a, #11131a)'
-                          : 'linear-gradient(145deg, #161822, #0f1016)',
-                        boxShadow: hasSkill
-                          ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 3px 6px rgba(0,0,0,0.5)'
-                          : 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)'
-                      }}
-                    >
-                      {/* Step Number in top-left (#1, #2, ...) */}
-                      <div className="absolute top-1 left-1.5 z-20 text-[9px] font-mono font-medium text-gray-500 pointer-events-none">
-                        {idx + 1}
-                      </div>
+                  return chain.steps.map((step, idx) => {
+                    const hasSkill = step.skill !== null;
+                    const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
+                    const isHovered = hoveredTarget?.chainId === chain.id && hoveredTarget?.stepId === step.id;
+                    const isTargetForTip = isCurrent && isMultiplierTipHovered && idx === targetHighlightIdx;
 
-                      {hasSkill && step.skill ? (
-                        <>
-                          <SkillIconRenderer
-                            skill={step.skill}
-                            showLevel={false}
-                            onUploadImage={onUploadImage}
-                          />
+                    return (
+                      <div
+                        key={step.id}
+                        draggable={hasSkill}
+                        onDragStart={(e) => handleDragStartFromStep(e, chain.id, step.id, idx)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (hoveredTarget?.stepId !== step.id) {
+                            setHoveredTarget({ chainId: chain.id, stepId: step.id });
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (hoveredTarget?.stepId === step.id) setHoveredTarget(null);
+                        }}
+                        onDrop={(e) => handleDropOnStep(e, chain.id, step.id)}
+                        onClick={() => handleStepClick(chain.id, step.id, idx + 1)}
+                        className={`w-[70px] sm:w-[74px] aspect-square rounded-lg p-0.5 relative flex flex-col items-center justify-center transition-all duration-150 select-none group shadow-inner shrink-0 ${
+                          isTargetForTip
+                            ? 'ring-2 ring-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.5)] z-40'
+                            : isCasting
+                            ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] scale-105 z-20'
+                            : isHovered
+                            ? 'ring-2 ring-gray-300 scale-102 z-10 bg-[#1c202d]'
+                            : hasSkill
+                            ? 'border border-[#384052] hover:border-[#4f5b75] cursor-grab active:cursor-grabbing'
+                            : selectedCatalogSkill
+                            ? 'border border-[#4fb0c9]/60 hover:border-[#4fb0c9] bg-[#161a24] cursor-pointer'
+                            : 'border border-[#262b38] hover:border-[#384052] hover:bg-[#161821]'
+                        }`}
+                        style={{
+                          background: hasSkill
+                            ? 'linear-gradient(145deg, #1b1e2a, #11131a)'
+                            : 'linear-gradient(145deg, #161822, #0f1016)',
+                          boxShadow: hasSkill
+                            ? 'inset 0 1px 0 rgba(255,255,255,0.06), 0 3px 6px rgba(0,0,0,0.5)'
+                            : 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)'
+                        }}
+                      >
+                        {/* Step Number in top-left (#1, #2, ...) */}
+                        <div className="absolute top-1 left-1.5 z-20 text-[9px] font-mono font-medium text-gray-500 pointer-events-none">
+                          {idx + 1}
+                        </div>
 
-                          {/* Hover Remove Skill button */}
+                        {hasSkill && step.skill ? (
+                          <>
+                            <SkillIconRenderer
+                              skill={step.skill}
+                              showLevel={false}
+                            />
+
+                            {/* Hover Remove Skill button */}
+                            <button
+                              onClick={(e) => handleClearStepSkill(chain.id, step.id, e)}
+                              title="Убрать умение в каталог"
+                              className="absolute -top-1.5 -right-1.5 z-30 w-4 h-4 rounded-full bg-[#272b38] hover:bg-rose-700 text-gray-300 hover:text-white text-[10px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-white/10"
+                            >
+                              ✕
+                            </button>
+
+                            {/* Repeat-count badge в правом нижнем углу:
+                                при наведении становится жёлтым text-yellow-300;
+                                при наведении на знак восклицания подсвечивается и выпускает бабл с хвостиком */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleCycleStepRepeat(chain.id, step.id, e)}
+                              title="Количество повторов нажатия (клик: 1 -> 2 -> 3 -> 1)"
+                              className={`absolute bottom-1 right-1 z-30 min-w-[18px] h-[18px] px-1 rounded font-mono font-bold text-[9px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 bg-black/60 hover:bg-black/90 backdrop-blur-[2px] ${
+                                isTargetForTip
+                                  ? 'text-yellow-300 scale-125 bg-black/95 drop-shadow-[0_0_10px_rgba(253,224,71,1)]'
+                                  : (step.repeatCount ?? 1) > 1
+                                  ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.9)] scale-105 hover:text-yellow-300'
+                                  : 'text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] hover:text-yellow-300 hover:drop-shadow-[0_0_8px_rgba(253,224,71,0.95)]'
+                              }`}
+                            >
+                              x{step.repeatCount ?? 1}
+                            </button>
+
+                            {/* Всплывающее окошко-сообщение (speech bubble) со стрелочкой/хвостиком,
+                                вылезающее прямо из значка мультипликатора */}
+                            {isTargetForTip && (
+                              <div className="absolute bottom-[26px] right-0 z-50 pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+                                <div className="relative w-48 sm:w-52 p-2.5 rounded-xl bg-[#141824] border border-yellow-400/80 text-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(250,204,21,0.25)] backdrop-blur-md">
+                                  {/* Header с иконкой */}
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-mono font-bold text-[10px] border border-yellow-400/40">
+                                      x1 / x2 / x3
+                                    </span>
+                                    <span className="font-semibold text-yellow-300 text-[11px]">
+                                      Мультипликатор
+                                    </span>
+                                  </div>
+
+                                  {/* Текст уведомления (лаконичный, только до первой точки) */}
+                                  <p className="text-[10px] leading-snug text-gray-200 font-normal">
+                                    Показывает, сколько раз скил повторится в комбинации.
+                                  </p>
+
+                                  {/* Стрелочка-хвостик сообщения в правом нижнем углу (указывает ровно на значок x1) */}
+                                  <div className="absolute -bottom-1.5 right-2.5 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-yellow-400/80 shadow-md"></div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* Empty Slot "+" & "Пусто" */
+                          <div className="flex flex-col items-center justify-center text-center p-1 text-gray-500 group-hover:text-gray-300 transition pointer-events-none">
+                            <span className="text-xl sm:text-2xl font-extralight leading-none mb-1 text-gray-400 group-hover:text-gray-200">
+                              +
+                            </span>
+                            <span className="text-[11px] font-sans tracking-wider text-gray-400">
+                              Пусто
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Small delete square icon if empty */}
+                        {!hasSkill && chain.steps.length > 1 && (
                           <button
-                            onClick={(e) => handleClearStepSkill(chain.id, step.id, e)}
-                            title="Убрать умение в каталог"
-                            className="absolute -top-1.5 -right-1.5 z-30 w-4 h-4 rounded-full bg-[#272b38] hover:bg-rose-700 text-gray-300 hover:text-white text-[10px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-white/10"
+                            onClick={(e) => handleDeleteStep(chain.id, step.id, e)}
+                            title="Удалить этот квадратик"
+                            className="absolute -top-1.5 -right-1.5 z-30 w-4 h-4 rounded-full bg-[#232734] hover:bg-rose-800 text-gray-400 hover:text-white text-[9px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
                           >
                             ✕
                           </button>
-                        </>
-                      ) : (
-                        /* Empty Slot "+" & "Пусто" */
-                        <div className="flex flex-col items-center justify-center text-center p-1 text-gray-500 group-hover:text-gray-300 transition pointer-events-none">
-                          <span className="text-xl sm:text-2xl font-extralight leading-none mb-1 text-gray-400 group-hover:text-gray-200">
-                            +
-                          </span>
-                          <span className="text-[11px] font-sans tracking-wider text-gray-400">
-                            Пусто
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Small delete square icon if empty */}
-                      {!hasSkill && chain.steps.length > 1 && (
-                        <button
-                          onClick={(e) => handleDeleteStep(chain.id, step.id, e)}
-                          title="Удалить этот квадратик"
-                          className="absolute -top-1.5 -right-1.5 z-30 w-4 h-4 rounded-full bg-[#232734] hover:bg-rose-800 text-gray-400 hover:text-white text-[9px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
 
                 {/* Add Step Button "+" Square at the end of the chain */}
                 <button

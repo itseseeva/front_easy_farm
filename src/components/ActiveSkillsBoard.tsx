@@ -450,7 +450,6 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         <SkillIconRenderer
                           skill={skill}
                           showLevel={false}
-                          onUploadImage={onUploadImage}
                         />
                       </div>
                     </div>
@@ -479,16 +478,16 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                 <div className="w-4 h-4 rounded-full flex items-center justify-center text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 cursor-help transition">
                   <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                 </div>
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover/panel-tip:flex flex-col w-64 sm:w-72 p-2.5 rounded-lg bg-[#151821]/95 border border-[#373e52] text-[11px] leading-relaxed text-gray-200 shadow-2xl backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute bottom-[26px] left-0 mb-1.5 hidden group-hover/panel-tip:flex flex-col w-56 sm:w-64 p-2.5 rounded-xl bg-[#141824] border border-amber-400/80 text-[10px] leading-snug text-gray-200 shadow-[0_8px_25px_rgba(0,0,0,0.9),0_0_15px_rgba(251,191,36,0.25)] backdrop-blur-md z-50 pointer-events-none transition-all animate-in fade-in zoom-in-95 duration-150">
                   <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1 text-[11px]">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>Расстановка умений</span>
                   </div>
-                  <p className="text-gray-300 font-normal">
-                    Выставьте умения точно в том же порядке, как на панели в вашей игре. Это критически важно для правильного нажатия клавиш и безошибочной работы комбо.
+                  <p className="text-gray-200 font-normal">
+                    Выставьте умения точно в том же порядке, как на панели в вашей игре.
                   </p>
-                  {/* Little triangle arrow */}
-                  <div className="absolute top-full left-3 -mt-px w-2 h-2 rotate-45 bg-[#151821] border-r border-b border-[#373e52]"></div>
+                  {/* Стрелочка-хвостик сообщения (speech bubble tail) */}
+                  <div className="absolute -bottom-1.5 left-2 w-3 h-3 rotate-45 bg-[#141824] border-r border-b border-amber-400/80 shadow-md"></div>
                 </div>
               </div>
             </div>
@@ -560,7 +559,6 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
-                          onUploadImage={onUploadImage}
                         />
 
                         {/* Slot key badge */}
@@ -650,7 +648,6 @@ export const ActiveSkillsBoard: React.FC<Props> = ({
                         <SkillIconRenderer
                           skill={slot.skill}
                           showLevel={false}
-                          onUploadImage={onUploadImage}
                         />
 
                         {/* Slot key badge */}
