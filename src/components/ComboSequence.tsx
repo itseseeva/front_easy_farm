@@ -97,13 +97,20 @@ export const ComboSequence: React.FC<Props> = ({
     }
   };
 
-  // Only the skills that are currently assigned to the 12 battle panel slots
+  // Only the skills that are currently assigned to the 12 battle panel slots.
+  // ВАЖНО: берём актуальную версию скилла из catalog по id, а не
+  // slot.skill напрямую — slot.skill это "замороженный" снимок объекта на
+  // момент, когда скилл поставили на боевую панель (переживает перезапуск
+  // через сохранённый конфиг). Если после этого в каталоге у скилла
+  // появилось новое поле (например defaultCastTimeSeconds), в старом
+  // снимке его не будет, и дефолты не будут доходить до цепочек.
   const activePanelSkills: ActiveSkill[] = [];
   const seenSkillIds = new Set<string>();
   for (const slot of slots) {
     if (slot.skill && !seenSkillIds.has(slot.skill.id)) {
       seenSkillIds.add(slot.skill.id);
-      activePanelSkills.push(slot.skill);
+      const fresh = catalog.find(c => c.id === slot.skill!.id);
+      activePanelSkills.push(fresh ?? slot.skill);
     }
   }
 
