@@ -19,6 +19,14 @@ type DragItem =
   | { type: 'step'; chainId: string; stepId: string; fromIndex: number }
   | { type: 'catalog'; skillId: string };
 
+// Подставляет defaultCastTimeSeconds скилла (если задан в каталоге) как
+// стартовое значение castTimeSeconds шага цепочки — срабатывает только
+// в момент постановки скилла на шаг, не задевает уже стоящие шаги.
+const withDefaultCastTime = (skill: ActiveSkill) => ({
+  skill,
+  castTimeSeconds: skill.defaultCastTimeSeconds ?? 0,
+});
+
 export const ComboSequence: React.FC<Props> = ({
   chains,
   onChainsChange,
@@ -34,14 +42,6 @@ export const ComboSequence: React.FC<Props> = ({
   const [hoveredTarget, setHoveredTarget] = useState<{ chainId: string; stepId: string } | null>(null);
   const [isOverCatalog, setIsOverCatalog] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ chainId: string; stepId: string; stepIndex: number } | null>(null);
-
-  // Дефолтное время каста скилла (например "Внутренний покой" = 5с)
-  // подставляется автоматически при размещении в шаг цепочки — не нужно
-  // каждый раз руками щёлкать бейдж "×N сек" для одного и того же скилла.
-  const withDefaultCastTime = (skill: ActiveSkill) => ({
-    skill,
-    castTimeSeconds: skill.defaultCastTimeSeconds ?? 0,
-  });
 
   // Active Chain for Swipe / Carousel View
   const [activeChainIndex, setActiveChainIndex] = useState(0);

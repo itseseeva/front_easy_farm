@@ -8,7 +8,7 @@ export interface ActiveSkill {
   color: string;
   customIcon?: string; // base64 or URL
   svgType: string;
-  defaultCastTimeSeconds?: number; // реальное время каста в игре по умолчанию (например 5 у долгого канала) — подставляется автоматически при размещении скилла в цепочку
+  defaultCastTimeSeconds?: number; // время каста по умолчанию для этого скилла (сек), подставляется при постановке в цепочку
 }
 
 // ВАЖНО: name/type здесь — РЕАЛЬНЫЕ названия скиллов Throne & Liberty
