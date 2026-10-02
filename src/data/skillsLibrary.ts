@@ -285,17 +285,18 @@ export const INITIAL_SKILLS: ActiveSkill[] = INITIAL_CATALOG.slice(0, 12);
 
 export interface ChainStep {
   id: string;
-  skill: ActiveSkill | null;
-  cooldown: number; // in seconds
-  repeatCount?: number; // сколько раз подряд нажать этот скилл (по умолчанию 1)
-  castTimeSeconds?: number; // реальное время каста этого скилла в игре, сек (0/не задано — обычная короткая пауза)
+  key: string; // Вписанная клавиша пользователя (например: 1, 2, Q, E, R, F, Shift+Q)
+  skill?: ActiveSkill | null;
+  cooldown?: number; // in seconds
+  repeatCount?: number;
+  castTimeSeconds?: number; // система секунд из кнопок (0s, 1s, 2s... время каста/удержания)
 }
 
 export interface ComboChain {
   id: string;
   name: string;
   order: number; // 1, 2, 3...
-  cooldown: number; // Периодичность цепочки, сек — одно число, не диапазон
+  cooldown: number; // Периодичность цепочки, сек — одно число
   triggerAfterChainId: string; // "start" | "chain-id"
   steps: ChainStep[];
 }
@@ -308,12 +309,12 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     cooldown: 0,
     triggerAfterChainId: "start",
     steps: [
-      { id: "s1_1", skill: INITIAL_CATALOG[0], cooldown: 8.0 },
-      { id: "s1_2", skill: INITIAL_CATALOG[1], cooldown: 8.0 },
-      { id: "s1_3", skill: INITIAL_CATALOG[2], cooldown: 8.0 },
-      { id: "s1_4", skill: INITIAL_CATALOG[3], cooldown: 8.0 },
-      { id: "s1_5", skill: INITIAL_CATALOG[4], cooldown: 8.0 },
-      { id: "s1_6", skill: INITIAL_CATALOG[5], cooldown: 8.0 },
+      { id: "s1_1", key: "1", cooldown: 8.0, castTimeSeconds: 0 },
+      { id: "s1_2", key: "2", cooldown: 8.0, castTimeSeconds: 0 },
+      { id: "s1_3", key: "3", cooldown: 8.0, castTimeSeconds: 0 },
+      { id: "s1_4", key: "4", cooldown: 8.0, castTimeSeconds: 0 },
+      { id: "s1_5", key: "Q", cooldown: 8.0, castTimeSeconds: 1 },
+      { id: "s1_6", key: "E", cooldown: 8.0, castTimeSeconds: 0 },
     ]
   },
   {
@@ -323,9 +324,9 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     cooldown: 15,
     triggerAfterChainId: "chain_1",
     steps: [
-      { id: "s2_1", skill: null, cooldown: 12.0 },
-      { id: "s2_2", skill: null, cooldown: 15.0 },
-      { id: "s2_3", skill: null, cooldown: 18.0 },
+      { id: "s2_1", key: "R", cooldown: 12.0, castTimeSeconds: 1 },
+      { id: "s2_2", key: "F", cooldown: 15.0, castTimeSeconds: 0 },
+      { id: "s2_3", key: "C", cooldown: 18.0, castTimeSeconds: 2 },
     ]
   }
 ];
