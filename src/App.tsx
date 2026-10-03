@@ -8,8 +8,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  RotateCcw,
-  Keyboard
+  RotateCcw
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -261,43 +260,35 @@ export const App: React.FC = () => {
   }, [isBotRunning, isStarting, isStopping]);
 
   return (
-    <div className="min-h-screen bg-[#0b0d12] text-[#b8bfcc] flex flex-col selection:bg-[#343a4a] selection:text-white justify-center items-center p-2 sm:p-4">
-      {/* Sleek Minimalist Window Card */}
-      <div className="w-full max-w-[500px] bg-[#0e1017] border border-[#1f2330] rounded-2xl shadow-2xl shadow-black/80 flex flex-col overflow-hidden backdrop-blur-md">
+    <div className="min-h-screen bg-black text-zinc-300 flex flex-col selection:bg-zinc-700 selection:text-white justify-center items-center p-2 sm:p-4">
+      {/* Sleek Uber-Black Window Card */}
+      <div className="w-full max-w-[500px] bg-[#07070a] border border-zinc-800/90 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.95),0_0_25px_rgba(255,255,255,0.03)] flex flex-col overflow-hidden backdrop-blur-md">
         {/* Compact Header */}
-        <header className="bg-[#121520] border-b border-[#1c202d] px-3 py-2 flex items-center justify-between gap-2">
-          {/* Logo & Keyboard Mode Title */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-6 h-6 rounded-lg bg-[#181c28] border border-[#272e42] flex items-center justify-center font-bold text-gray-200 text-xs shadow-inner">
-              <Keyboard className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-serif tracking-[0.16em] text-[11px] uppercase text-gray-100 font-bold leading-tight">
-                EZF • КОМБО
-              </span>
-              <span className="text-[9px] text-gray-500 font-mono leading-none">
-                Клавиатурная ротация
-              </span>
-            </div>
+        <header className="bg-[#0b0b0f] border-b border-zinc-800/80 px-3 py-2 flex items-center justify-between gap-2">
+          {/* Animated Red Shimmer EZF Logo */}
+          <div className="flex items-center shrink-0 pl-1">
+            <span className="ezf-shimmer font-mono text-base font-black tracking-[0.24em] uppercase select-none cursor-default">
+              EZF
+            </span>
           </div>
 
           {/* Right Action Controls: Старт/Стоп (F5), Сброс, Экспорт */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Start / Stop Button (F5) with concise inline badge */}
+            {/* Start / Stop Button (F5) with concise inline badge & silver glow */}
             {isBotRunning ? (
               <button
                 onClick={handleStopBot}
                 disabled={isStopping}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#2d1519] text-rose-300 border-rose-800/80 hover:bg-[#3d191f] disabled:opacity-50 animate-pulse"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#181822] text-white border-zinc-400 hover:bg-[#22222e] disabled:opacity-50 shadow-[0_0_16px_rgba(255,255,255,0.35)] animate-pulse"
                 title="Остановить бота (F5)"
               >
                 {isStopping ? (
-                  <Loader2 className="w-3 h-3 text-rose-300 animate-spin" />
+                  <Loader2 className="w-3 h-3 text-zinc-200 animate-spin" />
                 ) : (
-                  <Square className="w-3 h-3 fill-rose-300" />
+                  <Square className="w-3 h-3 fill-zinc-100 text-zinc-100" />
                 )}
                 <span>{isStopping ? 'Остановка...' : 'Стоп'}</span>
-                <span className="px-1.5 py-0.2 rounded bg-rose-950/90 text-rose-300 text-[10px] font-mono font-bold border border-rose-500/40">
+                <span className="px-1.5 py-0.2 rounded bg-zinc-900/90 text-zinc-100 text-[10px] font-mono font-bold border border-zinc-500 shadow-[0_0_8px_rgba(255,255,255,0.25)]">
                   F5
                 </span>
               </button>
@@ -305,16 +296,16 @@ export const App: React.FC = () => {
               <button
                 onClick={handleStartBot}
                 disabled={isStarting}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#14231a] text-emerald-300 border-emerald-800/80 hover:bg-[#1b2f23] disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#111116] hover:bg-[#1a1a22] text-zinc-100 border-zinc-700/80 hover:border-zinc-400 hover:shadow-[0_0_18px_rgba(255,255,255,0.25)] disabled:opacity-50"
                 title="Запустить бота (F5)"
               >
                 {isStarting ? (
-                  <Loader2 className="w-3 h-3 text-emerald-300 animate-spin" />
+                  <Loader2 className="w-3 h-3 text-zinc-300 animate-spin" />
                 ) : (
-                  <Play className="w-3 h-3 fill-emerald-300" />
+                  <Play className="w-3 h-3 fill-zinc-200 text-zinc-200" />
                 )}
                 <span>{isStarting ? 'Запуск...' : 'Старт'}</span>
-                <span className="px-1.5 py-0.2 rounded bg-emerald-950/90 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/40">
+                <span className="px-1.5 py-0.2 rounded bg-[#1c1c24] text-zinc-200 text-[10px] font-mono font-bold border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
                   F5
                 </span>
               </button>
@@ -324,7 +315,7 @@ export const App: React.FC = () => {
             <button
               onClick={() => setShowResetConfirm(true)}
               disabled={isBotRunning}
-              className="p-1.5 text-gray-400 hover:text-amber-300 hover:bg-[#1a1e2b] rounded-lg border border-transparent hover:border-[#2b3144] transition cursor-pointer disabled:opacity-40"
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800/70 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] rounded-lg border border-transparent hover:border-zinc-700 transition cursor-pointer disabled:opacity-40"
               title="Сбросить все комбинации"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -333,7 +324,7 @@ export const App: React.FC = () => {
             {/* Download JSON backup */}
             <button
               onClick={handleExportJson}
-              className="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-[#1a1e2b] rounded-lg border border-transparent hover:border-[#2b3144] transition cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800/70 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)] rounded-lg border border-transparent hover:border-zinc-700 transition cursor-pointer"
               title="Скачать JSON файл конфигурации"
             >
               <Download className="w-3.5 h-3.5" />
@@ -343,25 +334,25 @@ export const App: React.FC = () => {
 
         {/* Reset Confirmation Dialog */}
         {showResetConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs">
-            <div className="bg-[#141722] border border-[#2b3144] rounded-xl p-3.5 max-w-[290px] w-full shadow-2xl flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-amber-400">
-                <RotateCcw className="w-4 h-4 shrink-0" />
-                <h3 className="font-medium text-xs text-gray-100">Сбросить комбинации клавиш?</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-xs">
+            <div className="bg-[#0b0b0f] border border-zinc-700 rounded-xl p-3.5 max-w-[290px] w-full shadow-[0_0_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] flex flex-col gap-2.5">
+              <div className="flex items-center gap-2 text-zinc-200">
+                <RotateCcw className="w-4 h-4 shrink-0 text-zinc-300" />
+                <h3 className="font-medium text-xs text-zinc-100">Сбросить комбинации клавиш?</h3>
               </div>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-zinc-400">
                 Все цепочки вернутся к начальным значениям по умолчанию.
               </p>
-              <div className="flex justify-end gap-1.5 pt-1 border-t border-[#202534]">
+              <div className="flex justify-end gap-1.5 pt-1 border-t border-zinc-800">
                 <button
                   onClick={() => setShowResetConfirm(false)}
-                  className="px-2.5 py-1 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-[#1c202d] transition cursor-pointer"
+                  className="px-2.5 py-1 rounded text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition cursor-pointer"
                 >
                   Отмена
                 </button>
                 <button
                   onClick={handleResetToDefault}
-                  className="px-2.5 py-1 rounded text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white transition shadow cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 rounded text-xs font-medium bg-zinc-200 hover:bg-white text-black transition shadow-[0_0_12px_rgba(255,255,255,0.3)] cursor-pointer flex items-center gap-1"
                 >
                   <span>Сбросить</span>
                 </button>
@@ -372,14 +363,14 @@ export const App: React.FC = () => {
 
         {/* Floating Status / Error Notifications */}
         {errorMessage && (
-          <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-rose-950/90 border border-rose-700 text-rose-200 text-xs flex items-center justify-between shadow-xl">
+          <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-[#1a1215] border border-zinc-600 text-zinc-200 text-xs flex items-center justify-between shadow-[0_0_20px_rgba(0,0,0,0.9)]">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-zinc-300 shrink-0" />
               <span className="font-medium">{errorMessage}</span>
             </div>
             <button
               onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-white font-bold px-1 cursor-pointer"
+              className="text-zinc-400 hover:text-white font-bold px-1 cursor-pointer"
             >
               ✕
             </button>
@@ -387,14 +378,14 @@ export const App: React.FC = () => {
         )}
 
         {successMessage && (
-          <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-700 text-emerald-200 text-xs flex items-center justify-between shadow-xl">
+          <div className="mx-3 mt-2 px-3 py-1.5 rounded-lg bg-[#111116] border border-zinc-600 text-zinc-200 text-xs flex items-center justify-between shadow-[0_0_20px_rgba(0,0,0,0.9)]">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-zinc-300 shrink-0" />
               <span className="font-medium">{successMessage}</span>
             </div>
             <button
               onClick={() => setSuccessMessage(null)}
-              className="text-emerald-400 hover:text-white font-bold px-1 cursor-pointer"
+              className="text-zinc-400 hover:text-white font-bold px-1 cursor-pointer"
             >
               ✕
             </button>

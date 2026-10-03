@@ -203,7 +203,7 @@ export const ComboSequence: React.FC<Props> = ({
         {chains.length > 1 && validChainIndex > 0 && (
           <button
             onClick={() => setActiveChainIndex(validChainIndex - 1)}
-            className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#141722]/95 hover:bg-[#202638] text-gray-400 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-md transition cursor-pointer"
+            className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#0c0c11]/95 hover:bg-[#1a1a24] text-zinc-400 hover:text-white border border-zinc-700/80 hover:border-zinc-400 shadow-[0_4px_16px_rgba(0,0,0,0.9),0_0_10px_rgba(255,255,255,0.12)] backdrop-blur-md transition cursor-pointer"
             title={`Предыдущая: ${chains[validChainIndex - 1]?.name || 'цепочка'}`}
           >
             <ChevronUp className="w-3.5 h-3.5" />
@@ -214,7 +214,7 @@ export const ComboSequence: React.FC<Props> = ({
         {chains.length > 1 && validChainIndex < chains.length - 1 && (
           <button
             onClick={() => setActiveChainIndex(validChainIndex + 1)}
-            className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#141722]/95 hover:bg-[#202638] text-gray-400 hover:text-white border border-[#2e374c] hover:border-gray-300 shadow-[0_4px_16px_rgba(0,0,0,0.85)] backdrop-blur-md transition cursor-pointer"
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#0c0c11]/95 hover:bg-[#1a1a24] text-zinc-400 hover:text-white border border-zinc-700/80 hover:border-zinc-400 shadow-[0_4px_16px_rgba(0,0,0,0.9),0_0_10px_rgba(255,255,255,0.12)] backdrop-blur-md transition cursor-pointer"
             title={`Следующая: ${chains[validChainIndex + 1]?.name || 'цепочка'}`}
           >
             <ChevronDown className="w-3.5 h-3.5" />
@@ -238,20 +238,20 @@ export const ComboSequence: React.FC<Props> = ({
                   visibility: Math.abs(offset) <= 1 ? 'visible' : 'hidden',
                 }}
               >
-                <div className="w-full bg-[#11131a] border border-[#232734] rounded-xl p-3 shadow-xl flex flex-col gap-2.5 relative">
+                <div className="w-full bg-[#08080c] border border-zinc-800/90 rounded-xl p-3 shadow-[0_6px_25px_rgba(0,0,0,0.95)] flex flex-col gap-2.5 relative">
                   {/* Chain Header & Parameters */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1f232e] pb-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2 text-xs">
                     {/* Left: Chain Title & Order */}
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-200 shadow-[0_0_8px_rgba(255,255,255,0.85)]"></div>
                       <input
                         type="text"
                         value={chain.name}
                         onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
-                        className="bg-transparent font-medium text-gray-200 text-xs hover:border-b border-gray-600 focus:border-emerald-400 outline-none px-1 py-0.5 max-w-[150px]"
+                        className="bg-transparent font-medium text-zinc-100 text-xs hover:border-b border-zinc-600 focus:border-zinc-300 outline-none px-1 py-0.5 max-w-[150px]"
                         title="Нажмите для переименования цепочки"
                       />
-                      <span className="text-gray-500 font-mono text-[10px]">
+                      <span className="text-zinc-500 font-mono text-[10px]">
                         (№ {chain.order})
                       </span>
                     </div>
@@ -262,7 +262,7 @@ export const ComboSequence: React.FC<Props> = ({
                       <button
                         onClick={() => handleClearAllChainSteps(chain.id)}
                         title="Очистить все клавиши в этой цепочке"
-                        className="text-gray-500 hover:text-amber-300 p-1 rounded hover:bg-[#1a1e29] transition cursor-pointer"
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800/70 hover:shadow-[0_0_10px_rgba(255,255,255,0.15)] p-1 rounded transition cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>
@@ -272,7 +272,7 @@ export const ComboSequence: React.FC<Props> = ({
                         <button
                           onClick={() => handleRemoveChain(chain.id)}
                           title="Удалить эту цепочку"
-                          className="text-rose-400 hover:text-rose-300 text-[11px] px-1.5 py-0.5 rounded bg-rose-950/30 hover:bg-rose-900/40 border border-rose-900/40 transition cursor-pointer"
+                          className="text-zinc-400 hover:text-zinc-200 text-[11px] px-1.5 py-0.5 rounded bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-600 transition cursor-pointer"
                         >
                           ✕
                         </button>
@@ -281,15 +281,15 @@ export const ComboSequence: React.FC<Props> = ({
                   </div>
 
                   {/* Flow Trigger & Periodicity Settings */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-[#0c0d12] p-1.5 rounded-lg border border-[#1b1e28]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-[#040406] p-1.5 rounded-lg border border-zinc-800/80">
                     {/* Execution Trigger */}
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <CornerDownRight className="w-3 h-3 text-gray-500 shrink-0" />
+                    <div className="flex items-center gap-1 text-zinc-400">
+                      <CornerDownRight className="w-3 h-3 text-zinc-500 shrink-0" />
                       <span className="text-[10px]">Пуск:</span>
                       <select
                         value={chain.triggerAfterChainId}
                         onChange={(e) => handleUpdateChain(chain.id, { triggerAfterChainId: e.target.value })}
-                        className="bg-[#141720] text-gray-200 px-1.5 py-0.5 rounded border border-[#2a2f3e] outline-none text-[11px] cursor-pointer focus:border-emerald-500"
+                        className="bg-[#0e0e14] text-zinc-200 px-1.5 py-0.5 rounded border border-zinc-700/80 outline-none text-[11px] cursor-pointer focus:border-zinc-400"
                       >
                         <option value="start">Сразу (в начале)</option>
                         {chains
@@ -303,10 +303,10 @@ export const ComboSequence: React.FC<Props> = ({
                     </div>
 
                     {/* Periodicity (Cooldown) */}
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <Clock className="w-3 h-3 text-gray-500 shrink-0" />
+                    <div className="flex items-center gap-1 text-zinc-400">
+                      <Clock className="w-3 h-3 text-zinc-500 shrink-0" />
                       <span className="text-[10px]">Период:</span>
-                      <div className="bg-[#141720] border border-[#2a2f3e] focus-within:border-amber-400/80 rounded px-1 py-0.5">
+                      <div className="bg-[#0e0e14] border border-zinc-700/80 focus-within:border-zinc-400 rounded px-1 py-0.5 shadow-inner">
                         <input
                           type="number"
                           step="1"
@@ -317,10 +317,10 @@ export const ComboSequence: React.FC<Props> = ({
                             const val = parseFloat(e.target.value) || 0;
                             handleUpdateChain(chain.id, { cooldown: val });
                           }}
-                          className="w-7 bg-transparent text-gray-100 text-[11px] font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className="w-7 bg-transparent text-zinc-100 text-[11px] font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
-                      <span className="text-[10px] text-gray-500">с</span>
+                      <span className="text-[10px] text-zinc-500">с</span>
 
                       {/* Exclamation 1: Periodicity */}
                       <div
@@ -328,8 +328,8 @@ export const ComboSequence: React.FC<Props> = ({
                         onMouseLeave={() => setIsPeriodicityTipHovered(false)}
                         className={`w-3.5 h-3.5 rounded-full flex items-center justify-center cursor-help transition ${
                           isPeriodicityTipHovered
-                            ? 'text-amber-300 bg-amber-400/20 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
-                            : 'text-amber-400/80 hover:text-amber-300'
+                            ? 'text-white bg-zinc-800/90 shadow-[0_0_10px_rgba(255,255,255,0.5)] scale-110'
+                            : 'text-zinc-400/80 hover:text-white'
                         }`}
                         title="Подсказка о периодичности"
                       >
@@ -342,8 +342,8 @@ export const ComboSequence: React.FC<Props> = ({
                         onMouseLeave={() => setIsCastTimeTipHovered(false)}
                         className={`w-3.5 h-3.5 rounded-full flex items-center justify-center cursor-help transition ${
                           isCastTimeTipHovered
-                            ? 'text-amber-300 bg-amber-400/20 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
-                            : 'text-amber-400/80 hover:text-amber-300'
+                            ? 'text-white bg-zinc-800/90 shadow-[0_0_10px_rgba(255,255,255,0.5)] scale-110'
+                            : 'text-zinc-400/80 hover:text-white'
                         }`}
                         title="Время каста спела в секундах"
                       >
@@ -352,7 +352,7 @@ export const ComboSequence: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Chain Steps Squares - Small & Compact Keycaps with Glowing Effect */}
+                  {/* Chain Steps Squares - Small & Compact Keycaps with Grey Glowing Effect */}
                   <div className="flex items-center justify-between gap-2 w-full pt-1 relative min-h-[46px]">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {chain.steps.map((step, idx) => {
@@ -365,17 +365,17 @@ export const ComboSequence: React.FC<Props> = ({
                             key={step.id}
                             className={`w-[44px] h-[44px] rounded-lg p-0.5 relative flex flex-col items-center justify-center select-none group transition-all duration-200 shrink-0 ${
                               isCasting
-                                ? 'ring-2 ring-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.85)] scale-105 bg-[#17251d] z-20'
-                                : 'bg-[#141620] border border-[#272c3d] hover:border-emerald-400 hover:shadow-[0_0_14px_rgba(52,211,153,0.45)] hover:bg-[#191d2a]'
+                                ? 'ring-2 ring-zinc-200 shadow-[0_0_22px_rgba(255,255,255,0.85)] scale-105 bg-[#22222d] z-20'
+                                : 'bg-[#0d0d12] border border-zinc-800/90 hover:border-zinc-400 hover:shadow-[0_0_16px_rgba(220,225,235,0.4)] hover:bg-[#161622]'
                             }`}
                             style={{
                               boxShadow: isCasting
-                                ? '0 0 16px rgba(52,211,153,0.6), inset 0 1px 0 rgba(255,255,255,0.1)'
-                                : 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 4px rgba(0,0,0,0.5)',
+                                ? '0 0 18px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.2)'
+                                : 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 5px rgba(0,0,0,0.8)',
                             }}
                           >
                             {/* Step Index number in top-left */}
-                            <div className="absolute top-0.5 left-1 z-10 text-[8px] font-mono text-gray-500 pointer-events-none group-hover:text-gray-400">
+                            <div className="absolute top-0.5 left-1 z-10 text-[8px] font-mono text-zinc-500 pointer-events-none group-hover:text-zinc-300">
                               {idx + 1}
                             </div>
 
@@ -384,7 +384,7 @@ export const ComboSequence: React.FC<Props> = ({
                               <button
                                 onClick={(e) => handleDeleteStep(chain.id, step.id, e)}
                                 title="Удалить этот шаг"
-                                className="absolute -top-1 -right-1 z-30 w-3.5 h-3.5 rounded-full bg-[#1e2230] hover:bg-rose-700 text-gray-400 hover:text-white text-[8px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-white/10"
+                                className="absolute -top-1 -right-1 z-30 w-3.5 h-3.5 rounded-full bg-[#181822] hover:bg-zinc-700 text-zinc-400 hover:text-white text-[8px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-zinc-600"
                               >
                                 ✕
                               </button>
@@ -397,7 +397,7 @@ export const ComboSequence: React.FC<Props> = ({
                               value={step.key || ''}
                               placeholder="+"
                               onChange={(e) => handleUpdateStepKey(chain.id, step.id, e.target.value)}
-                              className="w-full text-center bg-transparent font-mono font-bold text-xs uppercase text-gray-100 group-hover:text-emerald-300 placeholder-gray-600 outline-none cursor-text transition-colors tracking-wide py-0.5"
+                              className="w-full text-center bg-transparent font-mono font-bold text-xs uppercase text-zinc-100 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] placeholder-zinc-700 outline-none cursor-text transition-colors tracking-wide py-0.5"
                               title="Впишите сюда клавишу (например: 1, 2, Q, E, R, F, Shift+Q)"
                             />
 
@@ -408,8 +408,8 @@ export const ComboSequence: React.FC<Props> = ({
                               title="Время удержания/каста (клик: 0s → 1s → 2s → 3s → 4s → 5s → 0s)"
                               className={`absolute bottom-0.5 right-0.5 z-20 px-1 py-0.2 rounded font-mono font-bold text-[8px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
                                 castSec > 0
-                                  ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
-                                  : 'text-gray-600 hover:text-gray-300 hover:bg-white/10'
+                                  ? 'bg-zinc-700/80 text-zinc-100 border border-zinc-500 shadow-[0_0_10px_rgba(255,255,255,0.4)]'
+                                  : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800'
                               }`}
                             >
                               {castSec > 0 ? `${castSec}s` : '0s'}
@@ -422,7 +422,7 @@ export const ComboSequence: React.FC<Props> = ({
                       <button
                         onClick={() => handleAddStepToChain(chain.id)}
                         title="Добавить шаг в комбинацию"
-                        className="w-[44px] h-[44px] rounded-lg border border-dashed border-[#2b3040] hover:border-emerald-400 hover:text-emerald-300 hover:bg-[#151924] hover:shadow-[0_0_12px_rgba(52,211,153,0.35)] transition flex items-center justify-center text-gray-500 cursor-pointer shrink-0 group"
+                        className="w-[44px] h-[44px] rounded-lg border border-dashed border-zinc-800 hover:border-zinc-400 hover:text-white hover:bg-[#14141c] hover:shadow-[0_0_16px_rgba(255,255,255,0.3)] transition flex items-center justify-center text-zinc-500 cursor-pointer shrink-0 group"
                       >
                         <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                       </button>
@@ -431,32 +431,32 @@ export const ComboSequence: React.FC<Props> = ({
                     {/* Notification Box in the red-circled empty area on the right */}
                     {(isPeriodicityTipHovered || isCastTimeTipHovered) && (
                       <div className="absolute right-0 bottom-0 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                        <div className="w-[220px] sm:w-[235px] h-[46px] px-2.5 py-1 rounded-xl bg-[#141824]/95 border border-amber-400/80 text-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.85),0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-md flex flex-col justify-center">
+                        <div className="w-[220px] sm:w-[235px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
                           {isPeriodicityTipHovered ? (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
-                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-mono font-bold text-[9px] border border-amber-400/40">
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
                                   CD
                                 </span>
-                                <span className="font-semibold text-amber-300 text-[11px] truncate">
+                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
                                   Периодичность
                                 </span>
                               </div>
-                              <p className="text-[9.5px] leading-tight text-gray-200 font-normal truncate">
+                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
                                 Откат самого долгого умения цепочки.
                               </p>
                             </>
                           ) : (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
-                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-mono font-bold text-[9px] border border-amber-400/40">
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
                                   0s...5s
                                 </span>
-                                <span className="font-semibold text-amber-300 text-[11px] truncate">
+                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
                                   Время каста
                                 </span>
                               </div>
-                              <p className="text-[9.5px] leading-tight text-gray-200 font-normal truncate">
+                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
                                 Время каста спела в секундах
                               </p>
                             </>
@@ -473,17 +473,17 @@ export const ComboSequence: React.FC<Props> = ({
       </div>
 
       {/* Bottom controls: Add new chain & chain counter */}
-      <div className="flex items-center justify-between px-1 text-xs text-gray-500">
+      <div className="flex items-center justify-between px-1 text-xs text-zinc-500">
         <button
           onClick={handleAddChain}
-          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-emerald-300 transition cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#151822] border border-transparent hover:border-[#272c3d]"
+          className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#121218] border border-transparent hover:border-zinc-700 hover:shadow-[0_0_10px_rgba(255,255,255,0.12)]"
           title="Создать ещё одну цепочку комбинаций"
         >
-          <Plus className="w-3 h-3 text-emerald-400" />
+          <Plus className="w-3 h-3 text-zinc-300" />
           <span>Добавить цепочку</span>
         </button>
 
-        <span className="text-[10px] font-mono text-gray-500">
+        <span className="text-[10px] font-mono text-zinc-500">
           Цепочка {validChainIndex + 1} из {chains.length}
         </span>
       </div>

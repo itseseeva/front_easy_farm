@@ -2,29 +2,29 @@
 
 @layer base {
   body {
-    background-color: #0d0f14;
-    color: #d1d5db;
+    background-color: #000000;
+    color: #e4e4e7;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 }
 
 /* Custom subtle scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #11141c;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a3142;
+  background: #27272a;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b445c;
+  background: #3f3f46;
 }
 
 /* Hide number input spinners / arrows completely */
@@ -36,6 +36,39 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* Animated Left-to-Right Light Blue Shimmer for EZF Logo */
+@keyframes ezfBlueShimmer {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ezf-shimmer {
+  background: linear-gradient(
+    90deg,
+    #64748b 0%,
+    #94a3b8 16%,
+    #38bdf8 36%,
+    #7dd3fc 46%,
+    #e0f2fe 52%,
+    #38bdf8 64%,
+    #94a3b8 84%,
+    #64748b 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ezfBlueShimmer 5s linear infinite;
+  display: inline-block;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+  will-change: background-position;
 }
 
 /* High-Tech Futuristic Modal Entrance and Animations */
