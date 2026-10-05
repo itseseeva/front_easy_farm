@@ -290,6 +290,8 @@ export interface ChainStep {
   cooldown?: number; // in seconds
   repeatCount?: number;
   castTimeSeconds?: number; // система секунд из кнопок (0s, 1s, 2s... время каста/удержания)
+  independent?: boolean; // «Жать по своему КД» (автономный шаг)
+  skillCooldownSeconds?: number; // КД умения в секундах (например 6)
 }
 
 export interface ComboChain {
@@ -297,7 +299,7 @@ export interface ComboChain {
   name: string;
   order: number; // 1, 2, 3...
   cooldown: number; // Периодичность цепочки, сек — одно число
-  triggerAfterChainId: string; // "start" | "chain-id"
+  triggerAfterChainId: string; // "start" | "always" | "chain-id"
   steps: ChainStep[];
 }
 
@@ -309,12 +311,12 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     cooldown: 0,
     triggerAfterChainId: "start",
     steps: [
-      { id: "s1_1", key: "1", cooldown: 8.0, castTimeSeconds: 0 },
-      { id: "s1_2", key: "2", cooldown: 8.0, castTimeSeconds: 0 },
-      { id: "s1_3", key: "3", cooldown: 8.0, castTimeSeconds: 0 },
-      { id: "s1_4", key: "4", cooldown: 8.0, castTimeSeconds: 0 },
-      { id: "s1_5", key: "Q", cooldown: 8.0, castTimeSeconds: 1 },
-      { id: "s1_6", key: "E", cooldown: 8.0, castTimeSeconds: 0 },
+      { id: "s1_1", key: "1", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+      { id: "s1_2", key: "2", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+      { id: "s1_3", key: "3", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+      { id: "s1_4", key: "4", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+      { id: "s1_5", key: "Q", cooldown: 8.0, castTimeSeconds: 1, repeatCount: 1 },
+      { id: "s1_6", key: "E", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
     ]
   },
   {
@@ -324,9 +326,9 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
     cooldown: 15,
     triggerAfterChainId: "chain_1",
     steps: [
-      { id: "s2_1", key: "R", cooldown: 12.0, castTimeSeconds: 1 },
-      { id: "s2_2", key: "F", cooldown: 15.0, castTimeSeconds: 0 },
-      { id: "s2_3", key: "C", cooldown: 18.0, castTimeSeconds: 2 },
+      { id: "s2_1", key: "R", cooldown: 12.0, castTimeSeconds: 1, repeatCount: 1 },
+      { id: "s2_2", key: "F", cooldown: 15.0, castTimeSeconds: 0, repeatCount: 1 },
+      { id: "s2_3", key: "C", cooldown: 18.0, castTimeSeconds: 2, repeatCount: 1 },
     ]
   }
 ];

@@ -22,6 +22,9 @@ export const ComboSequence: React.FC<Props> = ({
   const [isPeriodicityTipHovered, setIsPeriodicityTipHovered] = useState(false);
   const [isCastTimeTipHovered, setIsCastTimeTipHovered] = useState(false);
 
+  // Active step being configured in modal
+  const [editingStep, setEditingStep] = useState<{ chainId: string; stepId: string } | null>(null);
+
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
 
@@ -81,9 +84,9 @@ export const ComboSequence: React.FC<Props> = ({
       cooldown: 15,
       triggerAfterChainId: previousChainId,
       steps: [
-        { id: `step_${Date.now()}_1`, key: '1', cooldown: 8.0, castTimeSeconds: 0 },
-        { id: `step_${Date.now()}_2`, key: '2', cooldown: 8.0, castTimeSeconds: 0 },
-        { id: `step_${Date.now()}_3`, key: '3', cooldown: 8.0, castTimeSeconds: 0 },
+        { id: `step_${Date.now()}_1`, key: '1', cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+        { id: `step_${Date.now()}_2`, key: '2', cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
+        { id: `step_${Date.now()}_3`, key: '3', cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
       ]
     };
 
@@ -120,7 +123,8 @@ export const ComboSequence: React.FC<Props> = ({
           id: `step_${Date.now()}_${nextIdx}`,
           key: '',
           cooldown: 8.0,
-          castTimeSeconds: 0
+          castTimeSeconds: 0,
+          repeatCount: 1,
         };
         return { ...c, steps: [...c.steps, newStep] };
       }
@@ -156,6 +160,18 @@ export const ComboSequence: React.FC<Props> = ({
     onChainsChange(updated);
   };
 
+  // Update step arbitrary fields (independent, skillCooldownSeconds, etc.)
+  const handleUpdateStep = (chainId: string, stepId: string, updates: Partial<ChainStep>) => {
+    const updated = chains.map(c => {
+      if (c.id !== chainId) return c;
+      return {
+        ...c,
+        steps: c.steps.map(s => (s.id === stepId ? { ...s, ...updates } : s))
+      };
+    });
+    onChainsChange(updated);
+  };
+
   // Cycle step seconds (cast / hold duration): 0s -> 1s -> 2s -> 3s -> 4s -> 5s -> 0s
   const handleCycleStepCastTime = (chainId: string, stepId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -175,19 +191,44 @@ export const ComboSequence: React.FC<Props> = ({
     onChainsChange(updated);
   };
 
+  // Cycle step multiplier (number of repeated sequential presses): 1 -> 2 -> 3 -> 1
+  const MAX_REPEAT = 3;
+  const handleCycleStepRepeat = (chainId: string, stepId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const updated = chains.map(c => {
+      if (c.id !== chainId) return c;
+      return {
+        ...c,
+        steps: c.steps.map(s => {
+          if (s.id !== stepId) return s;
+          const current = s.repeatCount ?? 1;
+          const next = current >= MAX_REPEAT ? 1 : current + 1;
+          return { ...s, repeatCount: next };
+        })
+      };
+    });
+    onChainsChange(updated);
+  };
+
   // Reset steps in current chain to empty
   const handleClearAllChainSteps = (chainId: string) => {
     const updated = chains.map(c => {
       if (c.id === chainId) {
         return {
           ...c,
-          steps: c.steps.map(s => ({ ...s, key: '', castTimeSeconds: 0 }))
+          steps: c.steps.map(s => ({ ...s, key: '', castTimeSeconds: 0, repeatCount: 1 }))
         };
       }
       return c;
     });
     onChainsChange(updated);
   };
+
+  // Target step data for the step editor modal
+  const editingChain = chains.find(c => c.id === editingStep?.chainId);
+  const editingStepData = editingChain?.steps.find(s => s.id === editingStep?.stepId);
+  const editingStepIndex = editingChain ? editingChain.steps.findIndex(s => s.id === editingStep?.stepId) : -1;
 
   return (
     <div
@@ -292,6 +333,7 @@ export const ComboSequence: React.FC<Props> = ({
                         className="bg-[#0e0e14] text-zinc-200 px-1.5 py-0.5 rounded border border-zinc-700/80 outline-none text-[11px] cursor-pointer focus:border-zinc-400"
                       >
                         <option value="start">Сразу (в начале)</option>
+                        <option value="always">Постоянно</option>
                         {chains
                           .filter(c => c.id !== chain.id)
                           .map(c => (
@@ -357,20 +399,25 @@ export const ComboSequence: React.FC<Props> = ({
                     <div className="flex flex-wrap items-center gap-1.5">
                       {chain.steps.map((step, idx) => {
                         const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
-                        const hasKey = Boolean(step.key && step.key.trim().length > 0);
                         const castSec = step.castTimeSeconds ?? 0;
+                        const isIndependent = Boolean(step.independent);
+                        const skillCd = step.skillCooldownSeconds ?? 6;
 
                         return (
                           <div
                             key={step.id}
-                            className={`w-[44px] h-[44px] rounded-lg p-0.5 relative flex flex-col items-center justify-center select-none group transition-all duration-200 shrink-0 ${
+                            className={`w-[46px] h-[46px] rounded-lg p-0.5 relative flex flex-col items-center justify-center select-none group transition-all duration-200 shrink-0 ${
                               isCasting
                                 ? 'ring-2 ring-zinc-200 shadow-[0_0_22px_rgba(255,255,255,0.85)] scale-105 bg-[#22222d] z-20'
+                                : isIndependent
+                                ? 'bg-[#0b0f16] border border-cyan-800/80 shadow-[0_0_10px_rgba(6,182,212,0.18)] hover:border-cyan-400 hover:bg-[#101722]'
                                 : 'bg-[#0d0d12] border border-zinc-800/90 hover:border-zinc-400 hover:shadow-[0_0_16px_rgba(220,225,235,0.4)] hover:bg-[#161622]'
                             }`}
                             style={{
                               boxShadow: isCasting
                                 ? '0 0 18px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.2)'
+                                : isIndependent
+                                ? 'inset 0 1px 0 rgba(6,182,212,0.15), 0 2px 6px rgba(0,0,0,0.85)'
                                 : 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 5px rgba(0,0,0,0.8)',
                             }}
                           >
@@ -384,7 +431,7 @@ export const ComboSequence: React.FC<Props> = ({
                               <button
                                 onClick={(e) => handleDeleteStep(chain.id, step.id, e)}
                                 title="Удалить этот шаг"
-                                className="absolute -top-1 -right-1 z-30 w-3.5 h-3.5 rounded-full bg-[#181822] hover:bg-zinc-700 text-zinc-400 hover:text-white text-[8px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-zinc-600"
+                                className="absolute -top-1 -right-1 z-30 w-3.5 h-3.5 rounded-full bg-[#181822] hover:bg-zinc-700 text-zinc-400 hover:text-white text-[8px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow border border-zinc-600 cursor-pointer"
                               >
                                 ✕
                               </button>
@@ -401,11 +448,41 @@ export const ComboSequence: React.FC<Props> = ({
                               title="Впишите сюда клавишу (например: 1, 2, Q, E, R, F, Shift+Q)"
                             />
 
+                            {/* Independent CD badge (⏱6с) - Bottom Left Corner */}
+                            {isIndependent ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingStep({ chainId: chain.id, stepId: step.id });
+                                }}
+                                title={`Жать по своему КД: ${skillCd}с (нажмите для настройки)`}
+                                className="absolute bottom-0.5 left-0.5 z-20 px-1 py-0.2 rounded font-mono font-bold text-[7.5px] leading-tight flex items-center gap-0.5 bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/80 shadow-[0_0_8px_rgba(6,182,212,0.4)] cursor-pointer transition select-none active:scale-95"
+                              >
+                                <span>⏱</span>
+                                <span>{skillCd}с</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingStep({ chainId: chain.id, stepId: step.id });
+                                }}
+                                title="Настроить шаг: Жать по своему КД"
+                                className="absolute bottom-0.5 left-0.5 z-20 px-0.8 py-0.2 rounded font-mono text-[7.5px] leading-tight flex items-center text-zinc-600 hover:text-cyan-300 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                              >
+                                ⏱
+                              </button>
+                            )}
+
                             {/* Seconds badge (Система секунд из кнопок) - Bottom Right Corner */}
                             <button
                               type="button"
                               onClick={(e) => handleCycleStepCastTime(chain.id, step.id, e)}
-                              title="Время удержания/каста (клик: 0s → 1s → 2s → 3s → 4s → 5s → 0s)"
+                              onMouseEnter={() => setIsCastTimeTipHovered(true)}
+                              onMouseLeave={() => setIsCastTimeTipHovered(false)}
+                              title="Время каста спела в секундах (клик: 0s → 1s → 2s → 3s → 4s → 5s → 0s)"
                               className={`absolute bottom-0.5 right-0.5 z-20 px-1 py-0.2 rounded font-mono font-bold text-[8px] flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
                                 castSec > 0
                                   ? 'bg-zinc-700/80 text-zinc-100 border border-zinc-500 shadow-[0_0_10px_rgba(255,255,255,0.4)]'
@@ -422,7 +499,7 @@ export const ComboSequence: React.FC<Props> = ({
                       <button
                         onClick={() => handleAddStepToChain(chain.id)}
                         title="Добавить шаг в комбинацию"
-                        className="w-[44px] h-[44px] rounded-lg border border-dashed border-zinc-800 hover:border-zinc-400 hover:text-white hover:bg-[#14141c] hover:shadow-[0_0_16px_rgba(255,255,255,0.3)] transition flex items-center justify-center text-zinc-500 cursor-pointer shrink-0 group"
+                        className="w-[46px] h-[46px] rounded-lg border border-dashed border-zinc-800 hover:border-zinc-400 hover:text-white hover:bg-[#14141c] hover:shadow-[0_0_16px_rgba(255,255,255,0.3)] transition flex items-center justify-center text-zinc-500 cursor-pointer shrink-0 group"
                       >
                         <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                       </button>
@@ -487,6 +564,148 @@ export const ComboSequence: React.FC<Props> = ({
           Цепочка {validChainIndex + 1} из {chains.length}
         </span>
       </div>
+
+      {/* Step Settings Modal: «Жать по своему КД» */}
+      {editingStep && editingStepData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setEditingStep(null)}
+        >
+          <div
+            className="w-full max-w-[340px] bg-[#0c0d12] border border-zinc-700/90 rounded-2xl p-4 shadow-[0_12px_45px_rgba(0,0,0,0.95),0_0_24px_rgba(255,255,255,0.06)] flex flex-col gap-3 text-zinc-200 select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-zinc-800/90 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span>
+                <span className="font-semibold text-xs text-white">
+                  Редактор шага #{editingStepIndex + 1}
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-100 font-mono font-bold text-[10px] border border-zinc-700">
+                  {editingStepData.key || '—'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStep(null)}
+                className="text-zinc-500 hover:text-white p-1 rounded transition text-xs cursor-pointer"
+                title="Закрыть"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Выбор режима пуска шага */}
+            <div className="flex flex-col gap-1.5 bg-[#06070a] p-2.5 rounded-xl border border-zinc-800/90">
+              <label className="text-[10px] text-zinc-400 font-medium">
+                Пуск:
+              </label>
+              <select
+                value={editingStepData.independent ? 'always' : 'queue'}
+                onChange={(e) => {
+                  const isAlways = e.target.value === 'always';
+                  handleUpdateStep(editingStep.chainId, editingStep.stepId, {
+                    independent: isAlways,
+                    skillCooldownSeconds: isAlways ? (editingStepData.skillCooldownSeconds || 6) : undefined
+                  });
+                }}
+                className="bg-[#12131a] text-zinc-100 text-xs px-2 py-1.5 rounded-lg border border-zinc-700 outline-none cursor-pointer focus:border-cyan-400"
+              >
+                <option value="queue">Обычный (в общей очереди)</option>
+                <option value="always">Постоянно (по своему КД)</option>
+              </select>
+            </div>
+
+            {/* Галочка «Жать по своему КД» */}
+            <label className="flex items-start gap-2.5 bg-[#06070a] p-2.5 rounded-xl border border-zinc-800/90 cursor-pointer select-none hover:border-zinc-700 transition">
+              <input
+                type="checkbox"
+                checked={Boolean(editingStepData.independent)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  handleUpdateStep(editingStep.chainId, editingStep.stepId, {
+                    independent: checked,
+                    skillCooldownSeconds: checked ? (editingStepData.skillCooldownSeconds || 6) : undefined
+                  });
+                }}
+                className="mt-0.5 w-4 h-4 rounded bg-zinc-900 border-zinc-700 text-cyan-500 focus:ring-cyan-500/40 cursor-pointer accent-cyan-500"
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-white flex items-center gap-1.5">
+                  Жать по своему КД
+                  {editingStepData.independent && (
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                      (⏱{editingStepData.skillCooldownSeconds ?? 6}с)
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] text-zinc-400 leading-tight mt-0.5">
+                  Шаг нажимается автономно по таймеру своего кулдауна
+                </span>
+              </div>
+            </label>
+
+            {/* Ввод skillCooldownSeconds при включённой галочке */}
+            {editingStepData.independent && (
+              <div className="flex flex-col gap-2 bg-[#06070a] p-2.5 rounded-xl border border-cyan-900/40 shadow-[inset_0_0_12px_rgba(6,182,212,0.05)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-zinc-300">Кулдаун умения:</span>
+                  <div className="flex items-center gap-1 bg-[#12131a] px-2 py-1 rounded-lg border border-zinc-700 focus-within:border-cyan-400">
+                    <input
+                      type="number"
+                      min="1"
+                      max="300"
+                      step="1"
+                      value={editingStepData.skillCooldownSeconds ?? 6}
+                      onChange={(e) => {
+                        const val = Math.max(1, parseInt(e.target.value) || 1);
+                        handleUpdateStep(editingStep.chainId, editingStep.stepId, {
+                          skillCooldownSeconds: val
+                        });
+                      }}
+                      className="w-12 bg-transparent text-center font-mono font-bold text-xs text-cyan-300 outline-none"
+                    />
+                    <span className="text-[10px] text-zinc-400 font-mono">сек</span>
+                  </div>
+                </div>
+
+                {/* Быстрые кнопки пресетов */}
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <span className="text-[9.5px] text-zinc-500">Быстро:</span>
+                  {[3, 6, 8, 12, 15, 20, 24].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStep(editingStep.chainId, editingStep.stepId, {
+                          skillCooldownSeconds: sec
+                        })
+                      }
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
+                        editingStepData.skillCooldownSeconds === sec
+                          ? 'bg-cyan-500 text-black shadow-[0_0_8px_rgba(6,182,212,0.6)]'
+                          : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                      }`}
+                    >
+                      {sec}с
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Кнопка Готово */}
+            <button
+              type="button"
+              onClick={() => setEditingStep(null)}
+              className="w-full py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 hover:border-zinc-500 transition cursor-pointer shadow mt-1"
+            >
+              Готово
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

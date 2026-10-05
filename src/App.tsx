@@ -25,6 +25,9 @@ export const App: React.FC = () => {
               id: s.id || `step_${idx + 1}`,
               key: s.key || s.slot || s.combo || (s.skill ? s.skill.name : '') || `${idx + 1}`,
               castTimeSeconds: s.castTimeSeconds ?? 0,
+              repeatCount: s.repeatCount ?? 1,
+              independent: Boolean(s.independent),
+              skillCooldownSeconds: s.skillCooldownSeconds != null ? Number(s.skillCooldownSeconds) : 6,
             }))
           }));
         }
@@ -68,6 +71,9 @@ export const App: React.FC = () => {
                 id: `${c.id}_step${s.stepIndex || idx + 1}`,
                 key: s.key || s.slot || s.combo || (s.skillName && s.skillName !== 'None' ? s.skillName : '') || `${idx + 1}`,
                 castTimeSeconds: s.castTimeSeconds ?? 0,
+                repeatCount: s.repeatCount ?? 1,
+                independent: Boolean(s.independent),
+                skillCooldownSeconds: s.skillCooldownSeconds != null ? Number(s.skillCooldownSeconds) : 6,
               })),
             }))
           );
@@ -120,15 +126,26 @@ export const App: React.FC = () => {
         triggerAfter: chain.triggerAfterChainId,
         cooldownSeconds: chain.cooldown ?? 0,
         stepsCount: chain.steps.length,
-        steps: chain.steps.map((s, idx) => ({
-          stepIndex: idx + 1,
-          key: s.key || '',
-          slot: s.key || '',
-          combo: s.key || '',
-          skillName: s.key ? `Key_${s.key}` : 'None',
-          repeatCount: 1,
-          castTimeSeconds: s.castTimeSeconds ?? 0
-        }))
+        steps: chain.steps.map((s, idx) => {
+          const stepData: any = {
+            stepIndex: idx + 1,
+            key: s.key || '',
+            slot: s.key || '',
+            combo: s.key || '',
+            skillName: s.key ? `Key_${s.key}` : 'None',
+            castTimeSeconds: s.castTimeSeconds ?? 0,
+          };
+          if (s.repeatCount && s.repeatCount > 1) {
+            stepData.repeatCount = s.repeatCount;
+          }
+          if (s.independent) {
+            stepData.independent = true;
+            stepData.skillCooldownSeconds = s.skillCooldownSeconds ?? 6;
+          } else {
+            stepData.independent = false;
+          }
+          return stepData;
+        })
       }))
     };
   }, [chains]);
@@ -258,6 +275,44 @@ export const App: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isBotRunning, isStarting, isStopping]);
+
+  // Visual casting rotation simulation in preview while bot is running
+  useEffect(() => {
+    if (!isBotRunning || chains.length === 0) {
+      setActiveCasting(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const runSimulationLoop = async () => {
+      while (!isCancelled) {
+        for (const chain of chains) {
+          if (isCancelled) break;
+          for (const step of chain.steps) {
+            if (isCancelled) break;
+            const holdMs = Math.max(350, (step.castTimeSeconds ?? 0) * 800);
+
+            setActiveCasting({ chainId: chain.id, stepId: step.id });
+            await new Promise((res) => setTimeout(res, holdMs));
+            if (isCancelled) break;
+            setActiveCasting(null);
+            await new Promise((res) => setTimeout(res, 120));
+          }
+          if (!isCancelled && chain.cooldown > 0) {
+            await new Promise((res) => setTimeout(res, Math.min(2500, chain.cooldown * 400)));
+          }
+        }
+      }
+    };
+
+    runSimulationLoop();
+
+    return () => {
+      isCancelled = true;
+      setActiveCasting(null);
+    };
+  }, [isBotRunning, chains]);
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 flex flex-col selection:bg-zinc-700 selection:text-white justify-center items-center p-2 sm:p-4">
