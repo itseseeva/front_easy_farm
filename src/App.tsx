@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ComboChain, DEFAULT_COMBO_CHAINS } from './data/skillsLibrary';
 import { ComboSequence } from './components/ComboSequence';
+import { ShutdownTimer } from './components/ShutdownTimer';
 import {
   Play,
   Square,
@@ -246,6 +247,13 @@ export const App: React.FC = () => {
     }
   };
 
+  // Called when ShutdownTimer expires and automatically stops the bot
+  const handleTimerStoppedBot = useCallback(() => {
+    setIsBotRunning(false);
+    setActiveCasting(null);
+    setIsStopping(false);
+  }, []);
+
   // Export JSON file download
   const handleExportJson = () => {
     saveCurrentConfigToBackend();
@@ -327,15 +335,21 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          {/* Right Action Controls: Старт/Стоп (F5), Сброс, Экспорт */}
+          {/* Right Action Controls: Часы автоостановки, Старт/Стоп (F5), Сброс, Экспорт */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Start / Stop Button (F5) with concise inline badge & silver glow */}
+            {/* Auto-shutdown timer clock (left of Start button) */}
+            <ShutdownTimer
+              onBotStopped={handleTimerStoppedBot}
+              onToast={setSuccessMessage}
+            />
+
+            {/* Start / Stop Button */}
             {isBotRunning ? (
               <button
                 onClick={handleStopBot}
                 disabled={isStopping}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#181822] text-white border-zinc-400 hover:bg-[#22222e] disabled:opacity-50 shadow-[0_0_16px_rgba(255,255,255,0.35)] animate-pulse"
-                title="Остановить бота (F5)"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#181822] text-white border-zinc-400 hover:bg-[#22222e] disabled:opacity-50 shadow-[0_0_16px_rgba(255,255,255,0.35)] animate-pulse"
+                title="Остановить бота"
               >
                 {isStopping ? (
                   <Loader2 className="w-3 h-3 text-zinc-200 animate-spin" />
@@ -343,16 +357,13 @@ export const App: React.FC = () => {
                   <Square className="w-3 h-3 fill-zinc-100 text-zinc-100" />
                 )}
                 <span>{isStopping ? 'Остановка...' : 'Стоп'}</span>
-                <span className="px-1.5 py-0.2 rounded bg-zinc-900/90 text-zinc-100 text-[10px] font-mono font-bold border border-zinc-500 shadow-[0_0_8px_rgba(255,255,255,0.25)]">
-                  F5
-                </span>
               </button>
             ) : (
               <button
                 onClick={handleStartBot}
                 disabled={isStarting}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#111116] hover:bg-[#1a1a22] text-zinc-100 border-zinc-700/80 hover:border-zinc-400 hover:shadow-[0_0_18px_rgba(255,255,255,0.25)] disabled:opacity-50"
-                title="Запустить бота (F5)"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg font-medium text-xs transition cursor-pointer shadow border bg-[#111116] hover:bg-[#1a1a22] text-zinc-100 border-zinc-700/80 hover:border-zinc-400 hover:shadow-[0_0_18px_rgba(255,255,255,0.25)] disabled:opacity-50"
+                title="Запустить бота"
               >
                 {isStarting ? (
                   <Loader2 className="w-3 h-3 text-zinc-300 animate-spin" />
@@ -360,9 +371,6 @@ export const App: React.FC = () => {
                   <Play className="w-3 h-3 fill-zinc-200 text-zinc-200" />
                 )}
                 <span>{isStarting ? 'Запуск...' : 'Старт'}</span>
-                <span className="px-1.5 py-0.2 rounded bg-[#1c1c24] text-zinc-200 text-[10px] font-mono font-bold border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
-                  F5
-                </span>
               </button>
             )}
 
