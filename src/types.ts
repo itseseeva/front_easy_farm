@@ -53,12 +53,25 @@ export interface VisionSettings {
   yellowUpper: [number, number, number];
 }
 
+export interface BotStatusResponse {
+  running: boolean;
+  shutdown_mode: 'duration' | 'clock' | null;
+  shutdown_minutes: number | null;
+  shutdown_deadline_ms: number | null;
+  ok?: boolean;
+  error?: string;
+}
+
 declare global {
   interface Window {
     pywebview?: {
       api: {
         start_bot(): Promise<{ ok: boolean; error?: string }>;
         stop_bot(): Promise<{ ok: boolean; error?: string }>;
+        get_status?(): Promise<BotStatusResponse>;
+        set_shutdown_duration?(minutes: number): Promise<BotStatusResponse>;
+        set_shutdown_timer?(deadlineMs: number): Promise<BotStatusResponse>;
+        cancel_shutdown_timer?(): Promise<BotStatusResponse>;
         test_rotation(): Promise<{ ok: boolean; error?: string; chains_tested?: number }>;
         save_config(configJson: string): Promise<{ ok: boolean; error?: string }>;
         save_icon(slot: string, dataUrl: string): Promise<{ ok: boolean; error?: string; path?: string }>;

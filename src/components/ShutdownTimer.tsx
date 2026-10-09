@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { Clock, AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useShutdownTimer } from '../hooks/useShutdownTimer';
 
 interface ShutdownTimerProps {
@@ -16,24 +16,28 @@ const PRESETS = [
 ];
 
 /**
- * Calculates HH:MM string from now + minutes
+ * Calculates HH:MM string from target timestamp
  */
-function getTargetTimeFromMinutes(minutes: number): string {
-  const target = new Date(Date.now() + minutes * 60 * 1000);
+function formatTimeFromTimestamp(timestamp: number): string {
+  const target = new Date(timestamp);
   const hh = String(target.getHours()).padStart(2, '0');
   const mm = String(target.getMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 }
 
 /**
- * Calculates minutes from now until target HH:MM (today or tomorrow)
+ * Calculates deadline ms from HH:MM string (today or tomorrow)
+ * Returns null if invalid format
  */
-function getMinutesFromTargetTime(timeStr: string): number {
-  if (!timeStr || !timeStr.includes(':')) return 30;
-  const [hStr, mStr] = timeStr.split(':');
-  const hours = parseInt(hStr, 10);
-  const minutes = parseInt(mStr, 10);
-  if (isNaN(hours) || isNaN(minutes)) return 30;
+function getDeadlineMsFromTimeString(timeStr: string): number | null {
+  if (!timeStr || !timeStr.includes(':')) return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length !== 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
 
   const now = new Date();
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
@@ -43,8 +47,7 @@ function getMinutesFromTargetTime(timeStr: string): number {
     target.setDate(target.getDate() + 1);
   }
 
-  const diffMs = target.getTime() - now.getTime();
-  return Math.max(1, Math.round(diffMs / (60 * 1000)));
+  return target.getTime();
 }
 
 export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
@@ -52,47 +55,71 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
   onToast,
 }) => {
   const {
-    deadline,
-    totalDurationMs,
+    shutdownMode,
+    shutdownMinutes,
+    shutdownDeadlineMs,
     remainingMs,
-    isRunning,
+    totalDurationMs,
+    isPendingStart,
+    isActiveCountdown,
     isWarning,
-    warningToastVisible,
-    completionToast,
-    start,
-    cancel,
-    snooze,
-    dismissWarningToast,
-    dismissCompletionToast,
+    setDuration,
+    setClockTarget,
+    cancelTimer,
   } = useShutdownTimer({
     onBotStopped,
     onToast,
   });
 
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [selectedMinutes, setSelectedMinutes] = useState<number>(30);
-  const [targetTimeInput, setTargetTimeInput] = useState<string>(() => getTargetTimeFromMinutes(30));
+
+  // Form input fields
+  const [minutesInput, setMinutesInput] = useState<string>('');
+  const [targetTimeInput, setTargetTimeInput] = useState<string>('');
+
+  // Error validation indicators
+  const [isMinutesInvalid, setIsMinutesInvalid] = useState(false);
+  const [isTimeInvalid, setIsTimeInvalid] = useState(false);
+
+  const isSyncingInputsRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const minutesInputId = useId();
   const targetTimeInputId = useId();
 
-  // Keep target time input synced when popover opens
+  // Populate or clear fields according to shutdownMode & inputs when popover opens or mode changes
   useEffect(() => {
     if (isPopoverOpen) {
-      if (isRunning && deadline) {
-        const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
-        setSelectedMinutes(remainingMinutes);
-        const end = new Date(deadline);
-        const hh = String(end.getHours()).padStart(2, '0');
-        const mm = String(end.getMinutes()).padStart(2, '0');
-        setTargetTimeInput(`${hh}:${mm}`);
-      } else {
-        setTargetTimeInput(getTargetTimeFromMinutes(selectedMinutes));
+      isSyncingInputsRef.current = true;
+      if (shutdownMode === null) {
+        setMinutesInput('');
+        setTargetTimeInput('');
+      } else if (shutdownMode === 'duration') {
+        setMinutesInput(shutdownMinutes ? String(shutdownMinutes) : '');
+        setTargetTimeInput('');
+      } else if (shutdownMode === 'clock') {
+        if (shutdownDeadlineMs) {
+          setTargetTimeInput(formatTimeFromTimestamp(shutdownDeadlineMs));
+          const minsRemaining = Math.max(1, Math.round((shutdownDeadlineMs - Date.now()) / 60000));
+          setMinutesInput(String(minsRemaining));
+        }
+      }
+      setIsMinutesInvalid(false);
+      setIsTimeInvalid(false);
+
+      const timer = setTimeout(() => {
+        isSyncingInputsRef.current = false;
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
       }
     }
-  }, [isPopoverOpen, isRunning, deadline, remainingMs, selectedMinutes]);
+  }, [isPopoverOpen, shutdownMode, shutdownMinutes, shutdownDeadlineMs]);
 
   // Handle outside click & Esc key
   useEffect(() => {
@@ -134,7 +161,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
   const seconds = totalSeconds % 60;
 
   let displayTime = '';
-  if (isRunning) {
+  if (isActiveCountdown) {
     if (remainingMs > 60000) {
       displayTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     } else {
@@ -142,59 +169,128 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
     }
   }
 
-  // Real finish time for tooltip
+  // Real finish time or status text for tooltip
   let tooltipText = 'Таймер автоостановки (клик для настройки)';
-  if (isRunning && deadline) {
-    const end = new Date(deadline);
-    const endH = String(end.getHours()).padStart(2, '0');
-    const endM = String(end.getMinutes()).padStart(2, '0');
-    tooltipText = `Остановит бота в ${endH}:${endM}`;
+  if (isPendingStart) {
+    tooltipText = `Остановит бота через ${shutdownMinutes} мин (начнётся со Старта)`;
+  } else if (isActiveCountdown && shutdownDeadlineMs) {
+    tooltipText = `Остановит бота в ${formatTimeFromTimestamp(shutdownDeadlineMs)}`;
   }
 
-  // SVG progress ring calculations
-  // Circle radius 14 for compact neat progress arc without extra outer framing
+  // SVG Progress Ring calculations
   const radius = 14;
   const circumference = 2 * Math.PI * radius;
-  const effectiveTotal = totalDurationMs > 0 ? totalDurationMs : remainingMs;
-  const progress = isRunning && effectiveTotal > 0
-    ? Math.max(0, Math.min(1, remainingMs / effectiveTotal))
-    : 0;
-  const strokeDashoffset = circumference * (1 - progress);
+  let strokeDashoffset = circumference;
 
+  if (isPendingStart) {
+    // кольцо полное, без анимации
+    strokeDashoffset = 0;
+  } else if (isActiveCountdown) {
+    const effectiveTotal = totalDurationMs > 0 ? totalDurationMs : remainingMs;
+    const progress = effectiveTotal > 0 ? Math.max(0, Math.min(1, remainingMs / effectiveTotal)) : 0;
+    strokeDashoffset = circumference * (1 - progress);
+  }
+
+  // 1. Preset click: window.pywebview.api.set_shutdown_duration(minutes)
   const handlePresetClick = (mins: number) => {
-    setSelectedMinutes(mins);
-    setTargetTimeInput(getTargetTimeFromMinutes(mins));
-  };
-
-  const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10);
-    const mins = isNaN(val) ? 1 : Math.max(1, Math.min(1440, val));
-    setSelectedMinutes(mins);
-    setTargetTimeInput(getTargetTimeFromMinutes(mins));
-  };
-
-  const handleTargetTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const timeVal = e.target.value;
-    setTargetTimeInput(timeVal);
-    const mins = getMinutesFromTargetTime(timeVal);
-    setSelectedMinutes(mins);
-  };
-
-  const handleStartTimer = () => {
-    if (selectedMinutes > 0) {
-      start(selectedMinutes * 60 * 1000);
-      setIsPopoverOpen(false);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
+    isSyncingInputsRef.current = true;
+    setMinutesInput(String(mins));
+    setTargetTimeInput('');
+    setIsMinutesInvalid(false);
+    setIsTimeInvalid(false);
+    setDuration(mins);
+    setTimeout(() => {
+      isSyncingInputsRef.current = false;
+    }, 50);
   };
 
-  const handleCancelTimer = () => {
-    cancel();
-    setIsPopoverOpen(false);
+  // 2. Custom minutes change (debounced 600ms): window.pywebview.api.set_shutdown_duration(minutes)
+  const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    setMinutesInput(rawVal);
+    setIsMinutesInvalid(false);
+
+    if (isSyncingInputsRef.current) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (rawVal.trim() === '') {
+        // Очистили поле -> cancel_shutdown_timer()
+        cancelTimer();
+        setTargetTimeInput('');
+        setIsMinutesInvalid(false);
+        return;
+      }
+
+      const num = Number(rawVal.trim());
+      if (!isNaN(num) && Number.isInteger(num) && num >= 1 && num <= 1440) {
+        setIsMinutesInvalid(false);
+        setTargetTimeInput('');
+        setDuration(num);
+      } else {
+        setIsMinutesInvalid(true);
+      }
+    }, 600);
   };
+
+  // 3. Stop at HH:MM change (debounced 600ms): window.pywebview.api.set_shutdown_timer(deadlineMs)
+  const handleTargetTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    setTargetTimeInput(rawVal);
+    setIsTimeInvalid(false);
+
+    if (isSyncingInputsRef.current) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (rawVal.trim() === '') {
+        // Очистили поле -> cancel_shutdown_timer()
+        cancelTimer();
+        setMinutesInput('');
+        setIsTimeInvalid(false);
+        return;
+      }
+
+      const deadline = getDeadlineMsFromTimeString(rawVal);
+      if (deadline !== null) {
+        setIsTimeInvalid(false);
+        const minsRemaining = Math.max(1, Math.round((deadline - Date.now()) / 60000));
+        setMinutesInput(String(minsRemaining));
+        setClockTarget(deadline);
+      } else {
+        setIsTimeInvalid(true);
+      }
+    }, 600);
+  };
+
+  // 4. Cancel button click: window.pywebview.api.cancel_shutdown_timer()
+  const handleCancelClick = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    cancelTimer();
+    setMinutesInput('');
+    setTargetTimeInput('');
+    setIsMinutesInvalid(false);
+    setIsTimeInvalid(false);
+  };
+
+  const isTimerConfigured = shutdownMode !== null;
 
   return (
     <div className="relative inline-flex items-center shrink-0">
-      {/* Clock Button: компактные чистые часики вровень с кнопкой (h-[28px]) без двойных рамок */}
+      {/* Clock Button: компактные часики вровень со стартом */}
       <button
         ref={buttonRef}
         type="button"
@@ -202,21 +298,25 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
         className={`relative w-[32px] h-[32px] rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer select-none group focus:outline-none focus:ring-1 focus:ring-zinc-400 ${
           isWarning
             ? 'bg-red-950/40 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse'
-            : isRunning
+            : isActiveCountdown
             ? 'bg-zinc-900/60 text-zinc-100 hover:bg-zinc-800/80 shadow-[0_0_8px_rgba(255,255,255,0.1)]'
+            : isPendingStart
+            ? 'bg-amber-950/20 text-amber-300 hover:bg-amber-900/30 border border-amber-500/30'
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
         }`}
         title={tooltipText}
         aria-label={
-          isRunning
+          isActiveCountdown
             ? `Таймер автоостановки: осталось ${displayTime}`
+            : isPendingStart
+            ? `Таймер ожидает старта: ${shutdownMinutes} мин`
             : 'Таймер автоостановки'
         }
         aria-expanded={isPopoverOpen}
         aria-haspopup="dialog"
       >
-        {/* SVG Progress Ring (только если таймер запущен) */}
-        {isRunning && (
+        {/* SVG Progress Ring */}
+        {(isActiveCountdown || isPendingStart) && (
           <svg
             className="absolute inset-0 w-full h-full -rotate-90 transform pointer-events-none"
             viewBox="0 0 32 32"
@@ -231,23 +331,31 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               strokeLinecap="round"
-              className={`transition-all duration-700 ease-linear ${
-                isWarning ? 'text-red-500' : 'text-zinc-200'
-              }`}
+              className={
+                isPendingStart
+                  ? 'text-amber-400'
+                  : `transition-all duration-700 ease-linear ${
+                      isWarning ? 'text-red-500' : 'text-zinc-200'
+                    }`
+              }
               fill="none"
             />
           </svg>
         )}
 
-        {/* Center Content: Calm Clock or Digits */}
+        {/* Center Content: Calm Clock, Digits or Pending Indicator */}
         <div className="flex items-center justify-center pointer-events-none z-10">
-          {isRunning ? (
+          {isActiveCountdown ? (
             <span
               className={`font-mono font-bold text-[8.5px] tracking-tight leading-none ${
                 isWarning ? 'text-red-400 animate-pulse' : 'text-zinc-100'
               }`}
             >
               {displayTime}
+            </span>
+          ) : isPendingStart ? (
+            <span className="font-mono font-bold text-[8px] text-amber-300 leading-none">
+              ⏸{shutdownMinutes}м
             </span>
           ) : (
             <Clock className="w-4 h-4 text-zinc-400 group-hover:text-zinc-200 transition-colors" />
@@ -260,8 +368,8 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
         <div
           ref={popoverRef}
           role="dialog"
-          aria-label="Настройка таймера автоостановки"
-          className="absolute top-full mt-2 right-0 z-50 w-[275px] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          aria-label="Настройка автоостановки бота"
+          className="absolute top-full mt-2 right-0 z-50 w-[280px] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Popover Header */}
           <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
@@ -269,21 +377,25 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
               <Clock className="w-3.5 h-3.5 text-zinc-300" />
               <span>Автоостановка бота</span>
             </div>
-            {isRunning && (
+            {isActiveCountdown ? (
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-600 text-zinc-200">
                 {displayTime}
               </span>
-            )}
+            ) : isPendingStart ? (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 border border-amber-600/50 text-amber-300">
+                Ждёт старта
+              </span>
+            ) : null}
           </div>
 
-          {/* Preset Buttons */}
+          {/* Presets: сразу вызывают set_shutdown_duration */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase font-mono text-zinc-400 tracking-wider">
               Быстрый выбор
             </span>
             <div className="grid grid-cols-5 gap-1">
               {PRESETS.map((preset) => {
-                const isSelected = selectedMinutes === preset.minutes;
+                const isSelected = shutdownMinutes === preset.minutes;
                 return (
                   <button
                     key={preset.minutes}
@@ -316,9 +428,14 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
                 type="number"
                 min="1"
                 max="1440"
-                value={selectedMinutes}
+                placeholder="напр. 60"
+                value={minutesInput}
                 onChange={handleMinutesChange}
-                className="w-full bg-[#121216] border border-zinc-700/80 rounded px-2 py-1 text-xs text-zinc-100 font-mono focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                className={`w-full bg-[#121216] border rounded px-2 py-1 text-xs text-zinc-100 font-mono transition-colors focus:outline-none ${
+                  isMinutesInvalid
+                    ? 'border-red-500 ring-1 ring-red-500/50'
+                    : 'border-zinc-700/80 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400'
+                }`}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -333,78 +450,45 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
                 type="time"
                 value={targetTimeInput}
                 onChange={handleTargetTimeChange}
-                className="w-full bg-[#121216] border border-zinc-700/80 rounded px-2 py-1 text-xs text-zinc-100 font-mono focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 text-center"
+                className={`w-full bg-[#121216] border rounded px-2 py-1 text-xs text-zinc-100 font-mono text-center transition-colors focus:outline-none ${
+                  isTimeInvalid
+                    ? 'border-red-500 ring-1 ring-red-500/50'
+                    : 'border-zinc-700/80 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400'
+                }`}
               />
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Status Line & Cancel button */}
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-800">
-            {isRunning ? (
+            {/* Fine status text as specified */}
+            <span
+              className={`text-[11px] font-mono truncate select-none ${
+                isPendingStart
+                  ? 'text-amber-300'
+                  : isActiveCountdown
+                  ? 'text-zinc-200'
+                  : 'text-zinc-500'
+              }`}
+            >
+              {isPendingStart
+                ? `⏸ ${shutdownMinutes || 60} мин — начнётся со Старта`
+                : isActiveCountdown && shutdownDeadlineMs
+                ? `Остановит бота в ${formatTimeFromTimestamp(shutdownDeadlineMs)}`
+                : 'Таймер выключен'}
+            </span>
+
+            {/* Cancel button: видна только когда таймер настроен */}
+            {isTimerConfigured && (
               <button
                 type="button"
-                onClick={handleCancelTimer}
-                className="px-2.5 py-1 rounded text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-transparent hover:border-red-900 transition cursor-pointer"
+                onClick={handleCancelClick}
+                className="shrink-0 px-2 py-1 rounded text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-900/40 hover:border-red-700 transition cursor-pointer"
               >
-                Отменить
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsPopoverOpen(false)}
-                className="px-2 py-1 rounded text-xs text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
-              >
-                Закрыть
+                Отменить таймер
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={handleStartTimer}
-              className="px-3 py-1 rounded text-xs font-medium bg-[#181822] text-zinc-100 border border-zinc-600 hover:border-zinc-300 hover:bg-[#22222e] hover:shadow-[0_0_12px_rgba(255,255,255,0.2)] transition cursor-pointer flex items-center gap-1"
-            >
-              <span>{isRunning ? 'Обновить' : 'Запустить'}</span>
-            </button>
           </div>
-        </div>
-      )}
-
-      {/* Warning Toast: 60 seconds before stop */}
-      {warningToastVisible && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#161013] border border-red-500/70 text-zinc-100 text-xs shadow-[0_6px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(239,68,68,0.35)] animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 animate-pulse" />
-          <span className="font-medium">Бот остановится через 1 минуту</span>
-          <button
-            type="button"
-            onClick={() => snooze(15 * 60 * 1000)}
-            className="px-2.5 py-1 rounded bg-[#201519] hover:bg-[#2c1d23] text-zinc-100 text-[11px] font-medium border border-zinc-600 hover:border-zinc-400 transition cursor-pointer shadow-sm ml-1"
-          >
-            Отложить на 15 мин
-          </button>
-          <button
-            type="button"
-            onClick={dismissWarningToast}
-            className="text-zinc-400 hover:text-white p-0.5 cursor-pointer ml-0.5"
-            aria-label="Закрыть уведомление"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Completion Toast: when timer stops the bot */}
-      {completionToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0f1412] border border-emerald-500/70 text-zinc-100 text-xs shadow-[0_6px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(16,185,129,0.3)] animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium">{completionToast}</span>
-          <button
-            type="button"
-            onClick={dismissCompletionToast}
-            className="text-zinc-400 hover:text-white p-0.5 cursor-pointer ml-1"
-            aria-label="Закрыть уведомление"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
     </div>
