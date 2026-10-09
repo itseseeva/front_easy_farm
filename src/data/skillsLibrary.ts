@@ -292,6 +292,7 @@ export interface ChainStep {
   castTimeSeconds?: number; // система секунд из кнопок (0s, 1s, 2s... время каста/удержания)
   independent?: boolean; // «Жать по своему КД» (автономный шаг)
   skillCooldownSeconds?: number; // КД умения в секундах (например 6)
+  actionType?: string; // 'press' | 'hold' | 'mouse_click'
 }
 
 export interface ComboChain {

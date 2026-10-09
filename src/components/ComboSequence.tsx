@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ComboChain, ChainStep } from '../data/skillsLibrary';
 import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2 } from 'lucide-react';
 
@@ -24,6 +24,21 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Active step being configured in modal
   const [editingStep, setEditingStep] = useState<{ chainId: string; stepId: string } | null>(null);
+
+  // Draft step state for modal editing
+  const [draftStep, setDraftStep] = useState<{
+    key: string;
+    actionType: string;
+    castTimeSeconds: number;
+    independent: boolean;
+    skillCooldownSeconds: number;
+  }>({
+    key: '',
+    actionType: 'press',
+    castTimeSeconds: 0,
+    independent: false,
+    skillCooldownSeconds: 6,
+  });
 
   // Keep active index within valid bounds
   const validChainIndex = Math.min(Math.max(0, activeChainIndex), Math.max(0, chains.length - 1));
@@ -229,6 +244,44 @@ export const ComboSequence: React.FC<Props> = ({
   const editingChain = chains.find(c => c.id === editingStep?.chainId);
   const editingStepData = editingChain?.steps.find(s => s.id === editingStep?.stepId);
   const editingStepIndex = editingChain ? editingChain.steps.findIndex(s => s.id === editingStep?.stepId) : -1;
+
+  // Sync draft state whenever a step is selected for editing
+  useEffect(() => {
+    if (editingStep && editingStepData) {
+      setDraftStep({
+        key: editingStepData.key || '',
+        actionType: editingStepData.actionType || 'press',
+        castTimeSeconds: editingStepData.castTimeSeconds ?? 0,
+        independent: Boolean(editingStepData.independent),
+        skillCooldownSeconds: editingStepData.skillCooldownSeconds ?? 6,
+      });
+    }
+  }, [editingStep?.chainId, editingStep?.stepId]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!editingStep) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEditingStep(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingStep]);
+
+  // Commit changes from draft to active chain
+  const handleSaveStep = () => {
+    if (!editingStep) return;
+    handleUpdateStep(editingStep.chainId, editingStep.stepId, {
+      key: draftStep.key.toUpperCase(),
+      actionType: draftStep.actionType,
+      castTimeSeconds: draftStep.castTimeSeconds,
+      independent: draftStep.independent,
+      skillCooldownSeconds: draftStep.independent ? (draftStep.skillCooldownSeconds || 6) : undefined,
+    });
+    setEditingStep(null);
+  };
 
   return (
     <div
@@ -565,126 +618,128 @@ export const ComboSequence: React.FC<Props> = ({
         </span>
       </div>
 
-      {/* Step Settings Modal: «Жать по своему КД» */}
+      {/* Step Settings Modal: Compact & Adaptive «Редактор шага» */}
       {editingStep && editingStepData && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
           onClick={() => setEditingStep(null)}
         >
           <div
-            className="w-full max-w-[340px] bg-[#0c0d12] border border-zinc-700/90 rounded-2xl p-4 shadow-[0_12px_45px_rgba(0,0,0,0.95),0_0_24px_rgba(255,255,255,0.06)] flex flex-col gap-3 text-zinc-200 select-none"
+            className="w-full max-w-[280px] sm:max-w-[300px] max-h-[min(520px,90vh)] overflow-y-auto bg-[#0a0b10] border border-zinc-700/80 rounded-xl p-3 shadow-[0_16px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.05)] flex flex-col gap-2 text-zinc-200 select-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800/90 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span>
-                <span className="font-semibold text-xs text-white">
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.9)] shrink-0"></span>
+                <span className="font-semibold text-[11px] text-white truncate">
                   Редактор шага #{editingStepIndex + 1}
                 </span>
-                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-100 font-mono font-bold text-[10px] border border-zinc-700">
-                  {editingStepData.key || '—'}
+                <span className="px-1.5 py-0.2 rounded bg-zinc-800/90 text-cyan-300 font-mono font-bold text-[9.5px] border border-zinc-700/80 shrink-0">
+                  [{draftStep.key || '—'}]
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingStep(null)}
-                className="text-zinc-500 hover:text-white p-1 rounded transition text-xs cursor-pointer"
+                className="text-zinc-500 hover:text-white p-0.5 rounded transition text-xs cursor-pointer shrink-0"
                 title="Закрыть"
               >
                 ✕
               </button>
             </div>
 
-            {/* Выбор режима пуска шага */}
-            <div className="flex flex-col gap-1.5 bg-[#06070a] p-2.5 rounded-xl border border-zinc-800/90">
-              <label className="text-[10px] text-zinc-400 font-medium">
-                Пуск:
+            {/* Тип действия */}
+            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2 py-1.5 rounded-lg border border-zinc-800/80">
+              <label className="text-[10px] text-zinc-400 font-medium shrink-0">
+                Тип действия
               </label>
               <select
-                value={editingStepData.independent ? 'always' : 'queue'}
-                onChange={(e) => {
-                  const isAlways = e.target.value === 'always';
-                  handleUpdateStep(editingStep.chainId, editingStep.stepId, {
-                    independent: isAlways,
-                    skillCooldownSeconds: isAlways ? (editingStepData.skillCooldownSeconds || 6) : undefined
-                  });
-                }}
-                className="bg-[#12131a] text-zinc-100 text-xs px-2 py-1.5 rounded-lg border border-zinc-700 outline-none cursor-pointer focus:border-cyan-400"
+                value={draftStep.actionType}
+                onChange={(e) => setDraftStep(prev => ({ ...prev, actionType: e.target.value }))}
+                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-cyan-400 max-w-[150px] truncate"
               >
-                <option value="queue">Обычный (в общей очереди)</option>
-                <option value="always">Постоянно (по своему КД)</option>
+                <option value="press">Нажатие клавиши</option>
+                <option value="hold">Зажатие клавиши</option>
               </select>
             </div>
 
-            {/* Галочка «Жать по своему КД» */}
-            <label className="flex items-start gap-2.5 bg-[#06070a] p-2.5 rounded-xl border border-zinc-800/90 cursor-pointer select-none hover:border-zinc-700 transition">
+            {/* Время каста (сек) */}
+            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2 py-1.5 rounded-lg border border-zinc-800/80">
+              <label className="text-[10px] text-zinc-400 font-medium shrink-0">
+                Время каста (сек)
+              </label>
               <input
-                type="checkbox"
-                checked={Boolean(editingStepData.independent)}
+                type="number"
+                min="0"
+                max="5"
+                step="1"
+                value={draftStep.castTimeSeconds}
                 onChange={(e) => {
-                  const checked = e.target.checked;
-                  handleUpdateStep(editingStep.chainId, editingStep.stepId, {
-                    independent: checked,
-                    skillCooldownSeconds: checked ? (editingStepData.skillCooldownSeconds || 6) : undefined
-                  });
+                  const val = Math.min(5, Math.max(0, parseInt(e.target.value) || 0));
+                  setDraftStep(prev => ({ ...prev, castTimeSeconds: val }));
                 }}
-                className="mt-0.5 w-4 h-4 rounded bg-zinc-900 border-zinc-700 text-cyan-500 focus:ring-cyan-500/40 cursor-pointer accent-cyan-500"
+                className="w-14 bg-[#12131b] text-zinc-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border border-zinc-700/80 outline-none text-center focus:border-cyan-400"
               />
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-white flex items-center gap-1.5">
-                  Жать по своему КД
-                  {editingStepData.independent && (
-                    <span className="text-[10px] font-mono text-cyan-400 font-bold">
-                      (⏱{editingStepData.skillCooldownSeconds ?? 6}с)
-                    </span>
-                  )}
-                </span>
-                <span className="text-[10px] text-zinc-400 leading-tight mt-0.5">
-                  Шаг нажимается автономно по таймеру своего кулдауна
-                </span>
-              </div>
-            </label>
+            </div>
 
-            {/* Ввод skillCooldownSeconds при включённой галочке */}
-            {editingStepData.independent && (
-              <div className="flex flex-col gap-2 bg-[#06070a] p-2.5 rounded-xl border border-cyan-900/40 shadow-[inset_0_0_12px_rgba(6,182,212,0.05)]">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-300">Кулдаун умения:</span>
-                  <div className="flex items-center gap-1 bg-[#12131a] px-2 py-1 rounded-lg border border-zinc-700 focus-within:border-cyan-400">
+            {/* Условие запуска */}
+            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2 py-1.5 rounded-lg border border-zinc-800/80">
+              <label className="text-[10px] text-zinc-400 font-medium shrink-0">
+                Условие запуска
+              </label>
+              <select
+                value={draftStep.independent ? 'always' : 'queue'}
+                onChange={(e) => {
+                  const isAlways = e.target.value === 'always';
+                  setDraftStep(prev => ({
+                    ...prev,
+                    independent: isAlways,
+                    skillCooldownSeconds: isAlways ? (prev.skillCooldownSeconds || 6) : prev.skillCooldownSeconds
+                  }));
+                }}
+                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-cyan-400 max-w-[150px] truncate"
+              >
+                <option value="queue">Обычный (в очереди)</option>
+                <option value="always">Постоянно</option>
+              </select>
+            </div>
+
+            {/* Свое КД умения (сек) - когда выбрано «Постоянно» */}
+            {draftStep.independent && (
+              <div className="flex flex-col gap-1.5 bg-[#06070a]/90 p-2 rounded-lg border border-cyan-900/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.06)] animate-in fade-in duration-100">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[10px] text-cyan-300 font-medium shrink-0">
+                    Свое КД умения (сек)
+                  </label>
+                  <div className="flex items-center gap-1 bg-[#12131b] px-1.5 py-0.5 rounded-md border border-zinc-700/80 focus-within:border-cyan-400">
                     <input
                       type="number"
                       min="1"
                       max="300"
                       step="1"
-                      value={editingStepData.skillCooldownSeconds ?? 6}
+                      value={draftStep.skillCooldownSeconds}
                       onChange={(e) => {
                         const val = Math.max(1, parseInt(e.target.value) || 1);
-                        handleUpdateStep(editingStep.chainId, editingStep.stepId, {
-                          skillCooldownSeconds: val
-                        });
+                        setDraftStep(prev => ({ ...prev, skillCooldownSeconds: val }));
                       }}
-                      className="w-12 bg-transparent text-center font-mono font-bold text-xs text-cyan-300 outline-none"
+                      className="w-10 bg-transparent text-center font-mono font-bold text-[11px] text-cyan-300 outline-none"
                     />
-                    <span className="text-[10px] text-zinc-400 font-mono">сек</span>
+                    <span className="text-[9px] text-zinc-400 font-mono">сек</span>
                   </div>
                 </div>
 
                 {/* Быстрые кнопки пресетов */}
-                <div className="flex flex-wrap items-center gap-1 pt-1">
-                  <span className="text-[9.5px] text-zinc-500">Быстро:</span>
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <span className="text-[9px] text-zinc-500">Быстро:</span>
                   {[3, 6, 8, 12, 15, 20, 24].map((sec) => (
                     <button
                       key={sec}
                       type="button"
-                      onClick={() =>
-                        handleUpdateStep(editingStep.chainId, editingStep.stepId, {
-                          skillCooldownSeconds: sec
-                        })
-                      }
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition cursor-pointer ${
-                        editingStepData.skillCooldownSeconds === sec
-                          ? 'bg-cyan-500 text-black shadow-[0_0_8px_rgba(6,182,212,0.6)]'
+                      onClick={() => setDraftStep(prev => ({ ...prev, skillCooldownSeconds: sec }))}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition cursor-pointer ${
+                        draftStep.skillCooldownSeconds === sec
+                          ? 'bg-cyan-500 text-black shadow-[0_0_6px_rgba(6,182,212,0.7)]'
                           : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
                       }`}
                     >
@@ -692,17 +747,34 @@ export const ComboSequence: React.FC<Props> = ({
                     </button>
                   ))}
                 </div>
+
+                {/* Подсказка */}
+                <div className="p-1.5 rounded-md bg-cyan-950/30 border border-cyan-800/40 text-cyan-200 text-[9.5px] leading-tight flex items-start gap-1 mt-0.5">
+                  <span className="shrink-0 text-cyan-400">⏱</span>
+                  <span>
+                    Умение будет нажиматься по своему КД ({draftStep.skillCooldownSeconds}с) независимо от общего цикла ротации.
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Кнопка Готово */}
-            <button
-              type="button"
-              onClick={() => setEditingStep(null)}
-              className="w-full py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 hover:border-zinc-500 transition cursor-pointer shadow mt-1"
-            >
-              Готово
-            </button>
+            {/* Footer Buttons: Отмена / Сохранить шаг */}
+            <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/80 mt-0.5">
+              <button
+                type="button"
+                onClick={() => setEditingStep(null)}
+                className="flex-1 py-1 px-2 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] font-medium border border-zinc-700/80 transition cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveStep}
+                className="flex-1 py-1 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.35)] transition cursor-pointer"
+              >
+                Сохранить шаг
+              </button>
+            </div>
           </div>
         </div>
       )}

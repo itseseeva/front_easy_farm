@@ -29,6 +29,7 @@ export const App: React.FC = () => {
               repeatCount: s.repeatCount ?? 1,
               independent: Boolean(s.independent),
               skillCooldownSeconds: s.skillCooldownSeconds != null ? Number(s.skillCooldownSeconds) : 6,
+              actionType: s.actionType || 'press',
             }))
           }));
         }
@@ -75,6 +76,7 @@ export const App: React.FC = () => {
                 repeatCount: s.repeatCount ?? 1,
                 independent: Boolean(s.independent),
                 skillCooldownSeconds: s.skillCooldownSeconds != null ? Number(s.skillCooldownSeconds) : 6,
+                actionType: s.actionType || 'press',
               })),
             }))
           );
@@ -138,6 +140,9 @@ export const App: React.FC = () => {
           };
           if (s.repeatCount && s.repeatCount > 1) {
             stepData.repeatCount = s.repeatCount;
+          }
+          if (s.actionType) {
+            stepData.actionType = s.actionType;
           }
           if (s.independent) {
             stepData.independent = true;
