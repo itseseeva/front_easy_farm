@@ -510,7 +510,7 @@ export const ComboSequence: React.FC<Props> = ({
                                   setEditingStep({ chainId: chain.id, stepId: step.id });
                                 }}
                                 title={`Жать по своему КД: ${skillCd}с (нажмите для настройки)`}
-                                className="absolute bottom-0.5 left-0.5 z-20 px-1 py-0.2 rounded font-mono font-bold text-[7.5px] leading-tight flex items-center gap-0.5 bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/80 shadow-[0_0_8px_rgba(6,182,212,0.4)] cursor-pointer transition select-none active:scale-95"
+                                className="absolute bottom-0.5 left-0.5 z-20 px-1 py-0.2 rounded font-mono font-bold text-[7.5px] leading-tight flex items-center gap-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-600 shadow-[0_0_8px_rgba(255,255,255,0.15)] cursor-pointer transition select-none active:scale-95"
                               >
                                 <span>⏱</span>
                                 <span>{skillCd}с</span>
@@ -523,7 +523,7 @@ export const ComboSequence: React.FC<Props> = ({
                                   setEditingStep({ chainId: chain.id, stepId: step.id });
                                 }}
                                 title="Настроить шаг: Жать по своему КД"
-                                className="absolute bottom-0.5 left-0.5 z-20 px-0.8 py-0.2 rounded font-mono text-[7.5px] leading-tight flex items-center text-zinc-600 hover:text-cyan-300 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                                className="absolute bottom-0.5 left-0.5 z-20 px-0.8 py-0.2 rounded font-mono text-[7.5px] leading-tight flex items-center text-zinc-600 hover:text-zinc-200 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition cursor-pointer"
                               >
                                 ⏱
                               </button>
@@ -631,11 +631,11 @@ export const ComboSequence: React.FC<Props> = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.9)] shrink-0"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0"></span>
                 <span className="font-semibold text-[11px] text-white truncate">
                   Редактор шага #{editingStepIndex + 1}
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-zinc-800/90 text-cyan-300 font-mono font-bold text-[9.5px] border border-zinc-700/80 shrink-0">
+                <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-100 font-mono font-bold text-[9.5px] border border-zinc-700/80 shrink-0">
                   [{draftStep.key || '—'}]
                 </span>
               </div>
@@ -657,7 +657,7 @@ export const ComboSequence: React.FC<Props> = ({
               <select
                 value={draftStep.actionType}
                 onChange={(e) => setDraftStep(prev => ({ ...prev, actionType: e.target.value }))}
-                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-cyan-400 max-w-[150px] truncate"
+                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-zinc-400 max-w-[150px] truncate"
               >
                 <option value="press">Нажатие клавиши</option>
                 <option value="hold">Зажатие клавиши</option>
@@ -679,7 +679,7 @@ export const ComboSequence: React.FC<Props> = ({
                   const val = Math.min(5, Math.max(0, parseInt(e.target.value) || 0));
                   setDraftStep(prev => ({ ...prev, castTimeSeconds: val }));
                 }}
-                className="w-14 bg-[#12131b] text-zinc-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border border-zinc-700/80 outline-none text-center focus:border-cyan-400"
+                className="w-14 bg-[#12131b] text-zinc-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border border-zinc-700/80 outline-none text-center focus:border-zinc-400"
               />
             </div>
 
@@ -698,7 +698,7 @@ export const ComboSequence: React.FC<Props> = ({
                     skillCooldownSeconds: isAlways ? (prev.skillCooldownSeconds || 6) : prev.skillCooldownSeconds
                   }));
                 }}
-                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-cyan-400 max-w-[150px] truncate"
+                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-zinc-400 max-w-[150px] truncate"
               >
                 <option value="queue">Обычный (в очереди)</option>
                 <option value="always">Постоянно</option>
@@ -707,12 +707,12 @@ export const ComboSequence: React.FC<Props> = ({
 
             {/* Свое КД умения (сек) - когда выбрано «Постоянно» */}
             {draftStep.independent && (
-              <div className="flex flex-col gap-1.5 bg-[#06070a]/90 p-2 rounded-lg border border-cyan-900/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.06)] animate-in fade-in duration-100">
+              <div className="flex flex-col gap-1.5 bg-[#06070a]/90 p-2 rounded-lg border border-zinc-700/80 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)] animate-in fade-in duration-100">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[10px] text-cyan-300 font-medium shrink-0">
+                  <label className="text-[10px] text-zinc-300 font-medium shrink-0">
                     Свое КД умения (сек)
                   </label>
-                  <div className="flex items-center gap-1 bg-[#12131b] px-1.5 py-0.5 rounded-md border border-zinc-700/80 focus-within:border-cyan-400">
+                  <div className="flex items-center gap-1 bg-[#12131b] px-1.5 py-0.5 rounded-md border border-zinc-700/80 focus-within:border-zinc-400">
                     <input
                       type="number"
                       min="1"
@@ -723,7 +723,7 @@ export const ComboSequence: React.FC<Props> = ({
                         const val = Math.max(1, parseInt(e.target.value) || 1);
                         setDraftStep(prev => ({ ...prev, skillCooldownSeconds: val }));
                       }}
-                      className="w-10 bg-transparent text-center font-mono font-bold text-[11px] text-cyan-300 outline-none"
+                      className="w-10 bg-transparent text-center font-mono font-bold text-[11px] text-zinc-100 outline-none"
                     />
                     <span className="text-[9px] text-zinc-400 font-mono">сек</span>
                   </div>
@@ -737,10 +737,10 @@ export const ComboSequence: React.FC<Props> = ({
                       key={sec}
                       type="button"
                       onClick={() => setDraftStep(prev => ({ ...prev, skillCooldownSeconds: sec }))}
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition cursor-pointer border ${
                         draftStep.skillCooldownSeconds === sec
-                          ? 'bg-cyan-500 text-black shadow-[0_0_6px_rgba(6,182,212,0.7)]'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                          ? 'bg-[#1e1e28] text-white border-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.2)]'
+                          : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white hover:bg-zinc-700'
                       }`}
                     >
                       {sec}с
@@ -749,8 +749,8 @@ export const ComboSequence: React.FC<Props> = ({
                 </div>
 
                 {/* Подсказка */}
-                <div className="p-1.5 rounded-md bg-cyan-950/30 border border-cyan-800/40 text-cyan-200 text-[9.5px] leading-tight flex items-start gap-1 mt-0.5">
-                  <span className="shrink-0 text-cyan-400">⏱</span>
+                <div className="p-1.5 rounded-md bg-zinc-900 border border-zinc-700/60 text-zinc-300 text-[9.5px] leading-tight flex items-start gap-1 mt-0.5">
+                  <span className="shrink-0 text-zinc-400">⏱</span>
                   <span>
                     Умение будет нажиматься по своему КД ({draftStep.skillCooldownSeconds}с) независимо от общего цикла ротации.
                   </span>
@@ -770,7 +770,7 @@ export const ComboSequence: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleSaveStep}
-                className="flex-1 py-1 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.35)] transition cursor-pointer"
+                className="flex-1 py-1.5 px-2 rounded-lg bg-[#181822] hover:bg-[#22222e] text-zinc-100 hover:text-white text-[11px] font-medium border border-zinc-600 hover:border-zinc-300 shadow-[0_0_12px_rgba(255,255,255,0.18)] transition cursor-pointer"
               >
                 Сохранить шаг
               </button>

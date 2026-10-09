@@ -301,7 +301,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
             : isActiveCountdown
             ? 'bg-zinc-900/60 text-zinc-100 hover:bg-zinc-800/80 shadow-[0_0_8px_rgba(255,255,255,0.1)]'
             : isPendingStart
-            ? 'bg-amber-950/20 text-amber-300 hover:bg-amber-900/30 border border-amber-500/30'
+            ? 'bg-zinc-900/80 text-zinc-200 hover:bg-zinc-800/90 border border-zinc-600/80'
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
         }`}
         title={tooltipText}
@@ -333,7 +333,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
               strokeLinecap="round"
               className={
                 isPendingStart
-                  ? 'text-amber-400'
+                  ? 'text-zinc-400'
                   : `transition-all duration-700 ease-linear ${
                       isWarning ? 'text-red-500' : 'text-zinc-200'
                     }`
@@ -354,7 +354,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
               {displayTime}
             </span>
           ) : isPendingStart ? (
-            <span className="font-mono font-bold text-[8px] text-amber-300 leading-none">
+            <span className="font-mono font-bold text-[8px] text-zinc-300 leading-none">
               ⏸{shutdownMinutes}м
             </span>
           ) : (
@@ -382,7 +382,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
                 {displayTime}
               </span>
             ) : isPendingStart ? (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 border border-amber-600/50 text-amber-300">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-600 text-zinc-200">
                 Ждёт старта
               </span>
             ) : null}
@@ -465,7 +465,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
             <span
               className={`text-[11px] font-mono truncate select-none ${
                 isPendingStart
-                  ? 'text-amber-300'
+                  ? 'text-zinc-300'
                   : isActiveCountdown
                   ? 'text-zinc-200'
                   : 'text-zinc-500'
