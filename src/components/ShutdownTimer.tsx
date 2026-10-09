@@ -261,7 +261,7 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
           ref={popoverRef}
           role="dialog"
           aria-label="Настройка таймера автоостановки"
-          className="absolute top-full mt-2 left-0 sm:right-0 sm:left-auto z-50 w-[275px] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute top-full mt-2 right-0 z-50 w-[275px] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Popover Header */}
           <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
