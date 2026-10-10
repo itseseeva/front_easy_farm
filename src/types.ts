@@ -55,10 +55,39 @@ export interface VisionSettings {
 
 export interface BotStatusResponse {
   running: boolean;
+  chat_running?: boolean;
   shutdown_mode: 'duration' | 'clock' | null;
   shutdown_minutes: number | null;
   shutdown_deadline_ms: number | null;
   ok?: boolean;
+  error?: string;
+}
+
+export interface SessionSummaryData {
+  started_at_ms: number;
+  stopped_at_ms: number;
+  duration_s: number;
+  kills: number;
+  kills_per_hour: number;
+  avg_kill_gap_s: number | null;
+  lost: number;
+  stop_reason: 'user' | 'timer' | string;
+}
+
+export interface CaptureSkillsSlot {
+  key: string;
+  row?: 'top' | 'bottom' | string;
+  icon_png?: string | null;
+  brightness: number;
+  ok: boolean;
+  status: string;
+}
+
+export interface CaptureSkillsResponse {
+  ok: boolean;
+  message: string;
+  preview_png?: string | null;
+  slots?: CaptureSkillsSlot[];
   error?: string;
 }
 
@@ -72,6 +101,10 @@ declare global {
         set_shutdown_duration?(minutes: number): Promise<BotStatusResponse>;
         set_shutdown_timer?(deadlineMs: number): Promise<BotStatusResponse>;
         cancel_shutdown_timer?(): Promise<BotStatusResponse>;
+        get_last_session?(): Promise<SessionSummaryData | null>;
+        capture_skills?(): Promise<CaptureSkillsResponse>;
+        start_chat?(): Promise<{ ok: boolean; message?: string; error?: string }>;
+        stop_chat?(): Promise<{ ok: boolean; message?: string; error?: string }>;
         test_rotation(): Promise<{ ok: boolean; error?: string; chains_tested?: number }>;
         save_config(configJson: string): Promise<{ ok: boolean; error?: string }>;
         save_icon(slot: string, dataUrl: string): Promise<{ ok: boolean; error?: string; path?: string }>;

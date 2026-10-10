@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ComboChain, DEFAULT_COMBO_CHAINS } from './data/skillsLibrary';
 import { ComboSequence } from './components/ComboSequence';
 import { ShutdownTimer } from './components/ShutdownTimer';
+import { SessionSummaryModal } from './components/SessionSummaryModal';
+import { ChatBotToggle } from './components/ChatBotToggle';
+import { SessionSummaryData } from './types';
 import {
   Play,
   Square,
@@ -46,8 +49,81 @@ export const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // New features: Session Summary & Chat Bot
+  const [sessionSummary, setSessionSummary] = useState<SessionSummaryData | null>(null);
+  const lastShownStoppedAtMsRef = useRef<number | null>(null);
+  const [isChatRunning, setIsChatRunning] = useState(false);
+
   const [activeCasting, setActiveCasting] = useState<{ chainId: string; stepId: string } | null>(null);
   const isInitialMount = useRef<boolean>(true);
+
+  // 1) Session Summary: listener for "easyfarm:session-summary" and initial get_last_session()
+  useEffect(() => {
+    const handleSummaryEvent = (e: any) => {
+      const data: SessionSummaryData = e?.detail;
+      if (data && data.stopped_at_ms !== lastShownStoppedAtMsRef.current) {
+        lastShownStoppedAtMsRef.current = data.stopped_at_ms;
+        setSessionSummary(data);
+      }
+    };
+
+    window.addEventListener('easyfarm:session-summary', handleSummaryEvent);
+
+    const checkLastSession = async () => {
+      if (typeof window !== 'undefined' && window.pywebview?.api?.get_last_session) {
+        try {
+          const last = await window.pywebview.api.get_last_session();
+          if (last && last.stopped_at_ms !== lastShownStoppedAtMsRef.current) {
+            lastShownStoppedAtMsRef.current = last.stopped_at_ms;
+            setSessionSummary(last);
+          }
+        } catch (err) {
+          console.warn('get_last_session check warning:', err);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.pywebview?.api?.get_last_session) {
+      checkLastSession();
+    } else {
+      window.addEventListener('pywebviewready', checkLastSession, { once: true });
+    }
+
+    return () => {
+      window.removeEventListener('easyfarm:session-summary', handleSummaryEvent);
+      window.removeEventListener('pywebviewready', checkLastSession);
+    };
+  }, []);
+
+  // 2) Status polling: sync bot running and chat_running from get_status()
+  useEffect(() => {
+    let isCancelled = false;
+
+    const pollStatus = async () => {
+      if (typeof window !== 'undefined' && window.pywebview?.api?.get_status) {
+        try {
+          const res = await window.pywebview.api.get_status();
+          if (!isCancelled && res) {
+            if (typeof res.running === 'boolean' && !isStarting && !isStopping) {
+              setIsBotRunning(res.running);
+            }
+            if (typeof res.chat_running === 'boolean') {
+              setIsChatRunning(res.chat_running);
+            }
+          }
+        } catch (err) {
+          console.warn('get_status poll error:', err);
+        }
+      }
+    };
+
+    pollStatus();
+    const interval = setInterval(pollStatus, 2000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [isStarting, isStopping]);
 
   // Восстанавливаем цепочки из файла на диске (skills_config.json)
   useEffect(() => {
@@ -248,6 +324,23 @@ export const App: React.FC = () => {
         setIsBotRunning(false);
         setActiveCasting(null);
         setIsStopping(false);
+        // Preview session summary test event
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('easyfarm:session-summary', {
+              detail: {
+                started_at_ms: Date.now() - 3600000,
+                stopped_at_ms: Date.now(),
+                duration_s: 3600,
+                kills: 412,
+                kills_per_hour: 412,
+                avg_kill_gap_s: 8.7,
+                lost: 9,
+                stop_reason: 'user',
+              },
+            })
+          );
+        }
       }, 250);
     }
   };
@@ -257,6 +350,23 @@ export const App: React.FC = () => {
     setIsBotRunning(false);
     setActiveCasting(null);
     setIsStopping(false);
+    // Preview session summary test event for timer
+    if (typeof window !== 'undefined' && !window.pywebview) {
+      window.dispatchEvent(
+        new CustomEvent('easyfarm:session-summary', {
+          detail: {
+            started_at_ms: Date.now() - 1800000,
+            stopped_at_ms: Date.now(),
+            duration_s: 1800,
+            kills: 206,
+            kills_per_hour: 412,
+            avg_kill_gap_s: 8.7,
+            lost: 4,
+            stop_reason: 'timer',
+          },
+        })
+      );
+    }
   }, []);
 
   // Export JSON file download
@@ -328,9 +438,9 @@ export const App: React.FC = () => {
   }, [isBotRunning, chains]);
 
   return (
-    <div className="min-h-screen bg-black text-zinc-300 flex flex-col selection:bg-zinc-700 selection:text-white justify-center items-center p-2 sm:p-4">
+    <div className="min-h-screen w-full bg-black text-zinc-300 flex flex-col selection:bg-zinc-700 selection:text-white justify-center items-center p-1 sm:p-2 md:p-4">
       {/* Sleek Uber-Black Window Card */}
-      <div className="w-full max-w-[500px] bg-[#07070a] border border-zinc-800/90 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.95),0_0_25px_rgba(255,255,255,0.03)] flex flex-col overflow-hidden backdrop-blur-md">
+      <div className="w-full max-w-[480px] bg-[#07070a] border border-zinc-800/90 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.95),0_0_25px_rgba(255,255,255,0.03)] flex flex-col overflow-hidden backdrop-blur-md max-h-[98vh] sm:max-h-[96vh]">
         {/* Compact Header */}
         <header className="bg-[#0b0b0f] border-b border-zinc-800/80 px-3 py-2 flex items-center justify-between gap-2">
           {/* Animated Red Shimmer EZF Logo */}
@@ -340,12 +450,20 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          {/* Right Action Controls: Часы автоостановки, Старт/Стоп (F5), Сброс, Экспорт */}
+          {/* Right Action Controls: Часы автоостановки, Чат-бот, Старт/Стоп (F5), Сброс, Экспорт */}
           <div className="flex items-center gap-1.5 shrink-0">
             {/* Auto-shutdown timer clock (left of Start button) */}
             <ShutdownTimer
               onBotStopped={handleTimerStoppedBot}
               onToast={setSuccessMessage}
+            />
+
+            {/* Compact Chat-Bot Toggle */}
+            <ChatBotToggle
+              chatRunning={isChatRunning}
+              onChatStateChange={setIsChatRunning}
+              onError={setErrorMessage}
+              onSuccess={setSuccessMessage}
             />
 
             {/* Start / Stop Button */}
@@ -461,14 +579,23 @@ export const App: React.FC = () => {
         )}
 
         {/* Main Content: Minimalist Combo Sequence */}
-        <main className="p-3 w-full flex flex-col">
+        <main className="p-2 sm:p-3 w-full flex flex-col overflow-y-auto min-h-0 flex-1">
           <ComboSequence
             chains={chains}
             onChainsChange={setChains}
             activeCasting={activeCasting}
+            isBotRunning={isBotRunning}
+            onToast={setSuccessMessage}
+            onError={setErrorMessage}
           />
         </main>
       </div>
+
+      {/* Session Summary Modal */}
+      <SessionSummaryModal
+        data={sessionSummary}
+        onClose={() => setSessionSummary(null)}
+      />
     </div>
   );
 };

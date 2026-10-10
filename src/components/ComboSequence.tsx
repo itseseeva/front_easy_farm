@@ -1,20 +1,137 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ComboChain, ChainStep } from '../data/skillsLibrary';
-import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2 } from 'lucide-react';
+import { CaptureSkillsModal } from './CaptureSkillsModal';
+import { CaptureProgressToast, CaptureProgressState } from './CaptureProgressToast';
+import { CaptureSkillsResponse, CaptureSkillsSlot } from '../types';
 
 interface Props {
   chains: ComboChain[];
   onChainsChange: (chains: ComboChain[]) => void;
   activeCasting?: { chainId: string; stepId: string } | null;
+  isBotRunning?: boolean;
+  onToast?: (message: string) => void;
+  onError?: (message: string) => void;
 }
 
 const MAX_CAST_SECONDS = 5;
+
+function createMockSkillIcon(key: string, hue: number, isDark = false): string {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    // Background gradient
+    const grad = ctx.createLinearGradient(0, 0, 64, 64);
+    if (isDark) {
+      grad.addColorStop(0, '#121216');
+      grad.addColorStop(1, '#08080a');
+    } else {
+      grad.addColorStop(0, `hsl(${hue}, 65%, 28%)`);
+      grad.addColorStop(1, `hsl(${(hue + 40) % 360}, 75%, 15%)`);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    // Inner geometric emblem/pattern to feel like an RPG skill icon
+    ctx.strokeStyle = isDark ? '#27272a' : `hsla(${hue}, 80%, 75%, 0.4)`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(6, 6, 52, 52);
+
+    ctx.fillStyle = isDark ? '#3f3f46' : `hsl(${hue}, 70%, 55%)`;
+    ctx.beginPath();
+    ctx.arc(32, 28, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = isDark ? '#18181b' : '#ffffff';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(key.toUpperCase(), 32, 30);
+
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    return '';
+  }
+}
+
+function createMock14Slots(): CaptureSkillsSlot[] {
+  // 14 slots order:
+  // Top row: q, c
+  // Bottom row: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, -, =
+  // 2 slots with ok: false and status "тёмный: пустой или откат?" (e.g. "5" and "-")
+  const rawDefinitions = [
+    { key: 'q', row: 'top', hue: 200, ok: true, status: 'ok', brightness: 122 },
+    { key: 'c', row: 'top', hue: 280, ok: true, status: 'ok', brightness: 118 },
+    { key: '1', row: 'bottom', hue: 215, ok: true, status: 'ok', brightness: 124 },
+    { key: '2', row: 'bottom', hue: 260, ok: true, status: 'ok', brightness: 120 },
+    { key: '3', row: 'bottom', hue: 320, ok: true, status: 'ok', brightness: 115 },
+    { key: '4', row: 'bottom', hue: 140, ok: true, status: 'ok', brightness: 128 },
+    { key: '5', row: 'bottom', hue: 45, ok: false, status: 'тёмный: пустой или откат?', brightness: 46 },
+    { key: '6', row: 'bottom', hue: 185, ok: true, status: 'ok', brightness: 116 },
+    { key: '7', row: 'bottom', hue: 345, ok: true, status: 'ok', brightness: 119 },
+    { key: '8', row: 'bottom', hue: 100, ok: true, status: 'ok', brightness: 121 },
+    { key: '9', row: 'bottom', hue: 240, ok: true, status: 'ok', brightness: 114 },
+    { key: '0', row: 'bottom', hue: 30, ok: true, status: 'ok', brightness: 125 },
+    { key: '-', row: 'bottom', hue: 60, ok: false, status: 'тёмный: пустой или откат?', brightness: 42 },
+    { key: '=', row: 'bottom', hue: 165, ok: true, status: 'ok', brightness: 127 },
+  ];
+
+  return rawDefinitions.map((item) => ({
+    key: item.key,
+    row: item.row,
+    icon_png: createMockSkillIcon(item.key, item.hue, !item.ok),
+    brightness: item.brightness,
+    ok: item.ok,
+    status: item.status,
+  }));
+}
 
 export const ComboSequence: React.FC<Props> = ({
   chains,
   onChainsChange,
   activeCasting = null,
+  isBotRunning = false,
+  onToast,
+  onError,
 }) => {
+  // Capture Skills state
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureResult, setCaptureResult] = useState<CaptureSkillsResponse | null>(null);
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState<CaptureProgressState | null>(null);
+  const captureToastTimeoutRef = useRef<any>(null);
+
+  // Listen to easyfarm:capture-progress from backend
+  useEffect(() => {
+    const handleCaptureProgressEvent = (e: any) => {
+      const detail = e.detail;
+      if (!detail) return;
+      const stage = detail.stage as 'minimize' | 'capture' | 'save';
+      const secondsLeft = typeof detail.seconds_left === 'number' ? detail.seconds_left : 0;
+      
+      if (captureToastTimeoutRef.current) {
+        clearTimeout(captureToastTimeoutRef.current);
+        captureToastTimeoutRef.current = null;
+      }
+
+      setCaptureProgress({
+        stage,
+        secondsLeft,
+      });
+    };
+
+    window.addEventListener('easyfarm:capture-progress', handleCaptureProgressEvent as EventListener);
+    return () => {
+      window.removeEventListener('easyfarm:capture-progress', handleCaptureProgressEvent as EventListener);
+      if (captureToastTimeoutRef.current) {
+        clearTimeout(captureToastTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Active Chain for vertical navigation
   const [activeChainIndex, setActiveChainIndex] = useState(0);
 
@@ -283,6 +400,92 @@ export const ComboSequence: React.FC<Props> = ({
     setEditingStep(null);
   };
 
+  // Capture skills snapshot action
+  const handleCaptureSkills = async () => {
+    if (isBotRunning || isCapturing) return;
+    setIsCapturing(true);
+
+    // Initial toast: "Переключитесь на игру и ждите"
+    setCaptureProgress({
+      stage: 'prompt_switch',
+      secondsLeft: 6,
+      message: 'Переключитесь на игру и ждите — съёмка начнётся автоматически',
+    });
+
+    try {
+      if (typeof window !== 'undefined' && window.pywebview?.api?.capture_skills) {
+        const res = await window.pywebview.api.capture_skills();
+        setCaptureResult(res);
+        setIsCaptureModalOpen(true);
+
+        if (res.ok) {
+          setCaptureProgress({
+            stage: 'done',
+            secondsLeft: 0,
+            message: res.message || 'Готово',
+          });
+        } else {
+          setCaptureProgress({
+            stage: 'error',
+            secondsLeft: 0,
+            message: res.message || 'Ошибка съемки',
+          });
+        }
+
+        // Keep toast visible for 4 seconds after completion
+        if (captureToastTimeoutRef.current) clearTimeout(captureToastTimeoutRef.current);
+        captureToastTimeoutRef.current = setTimeout(() => {
+          setCaptureProgress(null);
+        }, 4000);
+      } else {
+        // Preview mode simulated progression
+        // 1. prompt switch (1s)
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setCaptureProgress({ stage: 'minimize', secondsLeft: 6 });
+        // 2. minimize countdown
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setCaptureProgress({ stage: 'capture', secondsLeft: 4 });
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        setCaptureProgress({ stage: 'capture', secondsLeft: 2 });
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        setCaptureProgress({ stage: 'save', secondsLeft: 0 });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const mockRes: CaptureSkillsResponse = {
+          ok: true,
+          message: 'Снимки сохранены',
+          preview_png: null,
+          slots: createMock14Slots(),
+        };
+        setCaptureResult(mockRes);
+        setIsCaptureModalOpen(true);
+
+        setCaptureProgress({
+          stage: 'done',
+          secondsLeft: 0,
+          message: 'Готово',
+        });
+
+        if (captureToastTimeoutRef.current) clearTimeout(captureToastTimeoutRef.current);
+        captureToastTimeoutRef.current = setTimeout(() => {
+          setCaptureProgress(null);
+        }, 4000);
+      }
+    } catch (err: any) {
+      setCaptureProgress({
+        stage: 'error',
+        secondsLeft: 0,
+        message: err?.message || 'Ошибка связи с бэкендом',
+      });
+      if (captureToastTimeoutRef.current) clearTimeout(captureToastTimeoutRef.current);
+      captureToastTimeoutRef.current = setTimeout(() => {
+        setCaptureProgress(null);
+      }, 4000);
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   return (
     <div
       onWheel={handleWheel}
@@ -448,8 +651,8 @@ export const ComboSequence: React.FC<Props> = ({
                   </div>
 
                   {/* Chain Steps Squares - Small & Compact Keycaps with Grey Glowing Effect */}
-                  <div className="flex items-center justify-between gap-2 w-full pt-1 relative min-h-[46px]">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full pt-1 relative min-h-[46px]">
+                    <div className="flex flex-wrap items-center gap-1.5 max-w-full">
                       {chain.steps.map((step, idx) => {
                         const isCasting = activeCasting?.chainId === chain.id && activeCasting?.stepId === step.id;
                         const castSec = step.castTimeSeconds ?? 0;
@@ -463,14 +666,14 @@ export const ComboSequence: React.FC<Props> = ({
                               isCasting
                                 ? 'ring-2 ring-zinc-200 shadow-[0_0_22px_rgba(255,255,255,0.85)] scale-105 bg-[#22222d] z-20'
                                 : isIndependent
-                                ? 'bg-[#0b0f16] border border-cyan-800/80 shadow-[0_0_10px_rgba(6,182,212,0.18)] hover:border-cyan-400 hover:bg-[#101722]'
+                                ? 'bg-[#0e1017] border border-zinc-600/90 shadow-[0_0_10px_rgba(255,255,255,0.06)] hover:border-zinc-300 hover:bg-[#151722]'
                                 : 'bg-[#0d0d12] border border-zinc-800/90 hover:border-zinc-400 hover:shadow-[0_0_16px_rgba(220,225,235,0.4)] hover:bg-[#161622]'
                             }`}
                             style={{
                               boxShadow: isCasting
                                 ? '0 0 18px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.2)'
                                 : isIndependent
-                                ? 'inset 0 1px 0 rgba(6,182,212,0.15), 0 2px 6px rgba(0,0,0,0.85)'
+                                ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.85)'
                                 : 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 5px rgba(0,0,0,0.8)',
                             }}
                           >
@@ -615,6 +818,39 @@ export const ComboSequence: React.FC<Props> = ({
 
         <span className="text-[10px] font-mono text-zinc-500">
           Цепочка {validChainIndex + 1} из {chains.length}
+        </span>
+      </div>
+
+      {/* Capture Skills Section */}
+      <div className="flex flex-col items-center gap-1 pt-1.5 border-t border-zinc-800/80 mt-0.5">
+        <button
+          type="button"
+          disabled={isBotRunning || isCapturing}
+          onClick={handleCaptureSkills}
+          title={isBotRunning ? 'Останови бота' : 'Снять панель скиллов'}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer select-none border ${
+            isBotRunning
+              ? 'bg-[#0e0e13] border-zinc-800/60 text-zinc-500 cursor-not-allowed opacity-60'
+              : isCapturing
+              ? 'bg-[#15161f] border-zinc-700 text-zinc-300'
+              : 'bg-[#101117] hover:bg-[#181924] text-zinc-200 border-zinc-800 hover:border-zinc-600 shadow-[0_0_12px_rgba(255,255,255,0.04)]'
+          }`}
+        >
+          {isCapturing ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 text-zinc-300 animate-spin shrink-0" />
+              <span>Снимаю панель скиллов…</span>
+            </>
+          ) : (
+            <>
+              <Camera className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+              <span>Снять скиллы</span>
+            </>
+          )}
+        </button>
+
+        <span className="text-[10px] text-zinc-500 text-center leading-tight max-w-[340px]">
+          Вне боя, все скиллы готовы (без цифр отката). Окно программы свернётся на ~10 секунд
         </span>
       </div>
 
@@ -778,6 +1014,21 @@ export const ComboSequence: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* Capture Skills Result Modal */}
+      <CaptureSkillsModal
+        isOpen={isCaptureModalOpen}
+        result={captureResult}
+        onClose={() => setIsCaptureModalOpen(false)}
+        onRetry={handleCaptureSkills}
+        isLoading={isCapturing}
+      />
+
+      {/* Capture Skills Progress Toast (displays during countdown, persists 4s after finish) */}
+      <CaptureProgressToast
+        progress={captureProgress}
+        onDismiss={() => setCaptureProgress(null)}
+      />
     </div>
   );
 };
