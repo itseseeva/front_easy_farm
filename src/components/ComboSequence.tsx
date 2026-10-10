@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ComboChain, ChainStep } from '../data/skillsLibrary';
-import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2, Sparkles, CheckCircle2, Eye } from 'lucide-react';
 import { CaptureProgressToast, CaptureProgressState } from './CaptureProgressToast';
+import { CaptureSkillsModal } from './CaptureSkillsModal';
+import { CaptureSkillsResponse, CaptureSkillsSlot } from '../types';
 import { soundManager } from '../utils/sound';
 
 interface Props {
@@ -15,6 +17,45 @@ interface Props {
 
 const MAX_CAST_SECONDS = 5;
 
+// Mock generators for preview mode or initial state
+const createMockSkillIcon = (hue: number, label: string): string => {
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 48;
+  canvas.height = 48;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  const grad = ctx.createLinearGradient(0, 0, 48, 48);
+  grad.addColorStop(0, `hsl(${hue}, 70%, 45%)`);
+  grad.addColorStop(1, `hsl(${(hue + 40) % 360}, 80%, 25%)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 48, 48);
+  ctx.strokeStyle = `hsl(${hue}, 90%, 65%)`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, 46, 46);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, 24, 24);
+  return canvas.toDataURL('image/png');
+};
+
+const createMockSkillSlots = (): CaptureSkillsSlot[] => {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+  return keys.map((key, idx) => {
+    const isIssue = key === '5' || key === '0';
+    return {
+      key,
+      row: 'bottom',
+      brightness: isIssue ? 48 : 115 + (idx * 3) % 25,
+      ok: !isIssue,
+      status: isIssue ? 'тёмный: пустой или откат?' : 'ok',
+      icon_png: createMockSkillIcon((idx * 30 + 190) % 360, key),
+    };
+  });
+};
+
 export const ComboSequence: React.FC<Props> = ({
   chains,
   onChainsChange,
@@ -26,7 +67,22 @@ export const ComboSequence: React.FC<Props> = ({
   // Capture Skills state
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureProgress, setCaptureProgress] = useState<CaptureProgressState | null>(null);
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [captureResult, setCaptureResult] = useState<CaptureSkillsResponse | null>(null);
+  const [isViewSkillsTipHovered, setIsViewSkillsTipHovered] = useState(false);
   const captureToastTimeoutRef = useRef<any>(null);
+
+  // Open skills modal handler
+  const handleOpenSkillsModal = () => {
+    if (!captureResult) {
+      setCaptureResult({
+        ok: true,
+        message: 'Снимки сохранены',
+        slots: createMockSkillSlots(),
+      });
+    }
+    setIsCaptureModalOpen(true);
+  };
 
   // Listen to easyfarm:capture-progress from backend
   useEffect(() => {
@@ -370,6 +426,8 @@ export const ComboSequence: React.FC<Props> = ({
           res.slots = [];
         }
 
+        setCaptureResult(res);
+
         // Force viewport repaint in pywebview/WebView2 upon window restore to eliminate black screen
         if (typeof window !== 'undefined') {
           requestAnimationFrame(() => {
@@ -430,6 +488,12 @@ export const ComboSequence: React.FC<Props> = ({
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // In preview mode: demonstrate success with sound!
+        const previewSlots = createMockSkillSlots();
+        setCaptureResult({
+          ok: true,
+          message: 'Снимки сохранены',
+          slots: previewSlots,
+        });
         setIsCaptureSuccess(true);
         soundManager.playSkillsReady();
 
@@ -738,11 +802,25 @@ export const ComboSequence: React.FC<Props> = ({
                       </button>
                     </div>
 
-                    {/* Notification Box in the empty area on the right (exclamation marks & capture skills button) */}
-                    {chainIdx === validChainIndex && (isPeriodicityTipHovered || isCastTimeTipHovered || isCaptureButtonTipHovered) && (
+                    {/* Notification Box in the empty area on the right (exclamation marks, capture skills button & view skills button) */}
+                    {chainIdx === validChainIndex && (isPeriodicityTipHovered || isCastTimeTipHovered || isCaptureButtonTipHovered || isViewSkillsTipHovered) && (
                       <div className="absolute right-0 bottom-0 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
                         <div className="w-[220px] sm:w-[245px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
-                          {isCaptureButtonTipHovered ? (
+                          {isViewSkillsTipHovered ? (
+                            <>
+                              <div className="flex items-center gap-1.5 leading-none mb-1">
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
+                                  Обзор
+                                </span>
+                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
+                                  Посмотреть скилы
+                                </span>
+                              </div>
+                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
+                                Показывает 12 слотов скиллов и состояние готовности
+                              </p>
+                            </>
+                          ) : isCaptureButtonTipHovered ? (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
                                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
@@ -812,15 +890,16 @@ export const ComboSequence: React.FC<Props> = ({
         </span>
       </div>
 
-      {/* Capture Skills Section - Fashionable animated button without extra modal or caption */}
-      <div className="flex flex-col items-center pt-1.5 border-t border-zinc-800/80 mt-0.5">
+      {/* Bottom Action Controls: «Снять скиллы» & «Посмотреть скилы» */}
+      <div className="flex items-center justify-center gap-2 pt-2 border-t border-zinc-800/80 mt-1 w-full">
+        {/* Button 1: Снять скиллы */}
         <button
           type="button"
           disabled={isBotRunning || isCapturing}
           onClick={handleCaptureSkills}
           onMouseEnter={() => setIsCaptureButtonTipHovered(true)}
           onMouseLeave={() => setIsCaptureButtonTipHovered(false)}
-          className={`relative group overflow-hidden flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer select-none border active:scale-95 ${
+          className={`flex-1 max-w-[210px] relative group overflow-hidden flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer select-none border active:scale-95 ${
             isBotRunning
               ? 'bg-[#0a0a0f] border-zinc-800/50 text-zinc-500 cursor-not-allowed opacity-50'
               : isCapturing
@@ -840,25 +919,41 @@ export const ComboSequence: React.FC<Props> = ({
 
           {isCapturing ? (
             <>
-              <Loader2 className="w-4 h-4 text-indigo-300 animate-spin shrink-0" />
-              <span className="relative z-10 text-indigo-200 animate-pulse">
-                Снимаю панель скиллов…
+              <Loader2 className="w-3.5 h-3.5 text-indigo-300 animate-spin shrink-0" />
+              <span className="relative z-10 text-indigo-200 animate-pulse text-[11.5px] truncate">
+                Снимаю…
               </span>
             </>
           ) : isCaptureSuccess ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="relative z-10 text-emerald-200">
-                Скиллы готовы!
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="relative z-10 text-emerald-200 text-[11.5px]">
+                Готовы!
               </span>
             </>
           ) : (
             <>
-              <Camera className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors shrink-0 group-hover:scale-110 duration-200" />
-              <span className="relative z-10">Снять скиллы</span>
-              <Sparkles className="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-300 opacity-60 group-hover:opacity-100 transition-all shrink-0 ml-0.5" />
+              <Camera className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white transition-colors shrink-0 group-hover:scale-110 duration-200" />
+              <span className="relative z-10 truncate">Снять скиллы</span>
+              <Sparkles className="w-3 h-3 text-zinc-400 group-hover:text-amber-300 opacity-60 group-hover:opacity-100 transition-all shrink-0 ml-0.5" />
             </>
           )}
+        </button>
+
+        {/* Button 2: Посмотреть скилы */}
+        <button
+          type="button"
+          disabled={isCapturing}
+          onClick={handleOpenSkillsModal}
+          onMouseEnter={() => setIsViewSkillsTipHovered(true)}
+          onMouseLeave={() => setIsViewSkillsTipHovered(false)}
+          className="flex-1 max-w-[210px] relative group overflow-hidden flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer select-none border border-zinc-700/80 hover:border-zinc-400 bg-gradient-to-b from-[#13141e] via-[#0d0e16] to-[#08090f] hover:from-[#1b1c2b] hover:to-[#0f101a] text-zinc-200 hover:text-white shadow-[0_4px_16px_rgba(0,0,0,0.7),0_0_12px_rgba(255,255,255,0.04)] hover:shadow-[0_4px_22px_rgba(0,0,0,0.85),0_0_16px_rgba(255,255,255,0.12)] active:scale-95 disabled:opacity-50"
+        >
+          {/* Animated Sheen effect on hover */}
+          <span className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:left-[100%] transition-all duration-1000 ease-in-out pointer-events-none" />
+
+          <Eye className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-100 transition-colors shrink-0 group-hover:scale-110 duration-200" />
+          <span className="relative z-10 truncate">Посмотреть скилы</span>
         </button>
       </div>
 
@@ -1027,6 +1122,15 @@ export const ComboSequence: React.FC<Props> = ({
       <CaptureProgressToast
         progress={captureProgress}
         onDismiss={() => setCaptureProgress(null)}
+      />
+
+      {/* Capture Skills Result Modal (opens on «Посмотреть скилы») */}
+      <CaptureSkillsModal
+        isOpen={isCaptureModalOpen}
+        result={captureResult}
+        onClose={() => setIsCaptureModalOpen(false)}
+        onRetry={handleCaptureSkills}
+        isLoading={isCapturing}
       />
     </div>
   );
