@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ComboChain, ChainStep } from '../data/skillsLibrary';
-import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2, Sparkles, CheckCircle2, Eye } from 'lucide-react';
+import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2, Sparkles, CheckCircle2, Eye, Zap, ArrowRight } from 'lucide-react';
 import { CaptureProgressToast, CaptureProgressState } from './CaptureProgressToast';
 import { CaptureSkillsModal } from './CaptureSkillsModal';
 import { CaptureSkillsResponse, CaptureSkillsSlot } from '../types';
@@ -189,14 +189,13 @@ export const ComboSequence: React.FC<Props> = ({
   const handleAddChain = () => {
     const nextOrder = chains.length + 1;
     const newChainId = `chain_${Date.now()}`;
-    const previousChainId = chains.length > 0 ? chains[chains.length - 1].id : 'start';
 
     const newChain: ComboChain = {
       id: newChainId,
-      name: `Цепочка #${nextOrder}`,
+      name: `Приоритет`,
       order: nextOrder,
-      cooldown: 15,
-      triggerAfterChainId: previousChainId,
+      cooldown: 0,
+      triggerAfterChainId: 'priority',
       steps: [
         { id: `step_${Date.now()}_1`, key: '1', cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
         { id: `step_${Date.now()}_2`, key: '2', cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
@@ -211,6 +210,30 @@ export const ComboSequence: React.FC<Props> = ({
     setTimeout(() => {
       setActiveChainIndex(nextIndex);
     }, 40);
+  };
+
+  // Move chain up in list (higher priority)
+  const handleMoveChainUp = (index: number) => {
+    if (index <= 0) return;
+    const newChains = [...chains];
+    const temp = newChains[index];
+    newChains[index] = newChains[index - 1];
+    newChains[index - 1] = temp;
+    const reordered = newChains.map((c, idx) => ({ ...c, order: idx + 1 }));
+    onChainsChange(reordered);
+    setActiveChainIndex(index - 1);
+  };
+
+  // Move chain down in list (lower priority)
+  const handleMoveChainDown = (index: number) => {
+    if (index >= chains.length - 1) return;
+    const newChains = [...chains];
+    const temp = newChains[index];
+    newChains[index] = newChains[index + 1];
+    newChains[index + 1] = temp;
+    const reordered = newChains.map((c, idx) => ({ ...c, order: idx + 1 }));
+    onChainsChange(reordered);
+    setActiveChainIndex(index + 1);
   };
 
   // Remove chain
@@ -542,7 +565,7 @@ export const ComboSequence: React.FC<Props> = ({
           <button
             onClick={() => setActiveChainIndex(validChainIndex - 1)}
             className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#0c0c11]/95 hover:bg-[#1a1a24] text-zinc-400 hover:text-white border border-zinc-700/80 hover:border-zinc-400 shadow-[0_4px_16px_rgba(0,0,0,0.9),0_0_10px_rgba(255,255,255,0.12)] backdrop-blur-md transition cursor-pointer"
-            title={`Предыдущая: ${chains[validChainIndex - 1]?.name || 'цепочка'}`}
+            title={`Предыдущая: ${chains[validChainIndex - 1]?.triggerAfterChainId === 'priority' ? 'Приоритет' : 'Постоянно'}`}
           >
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
@@ -553,7 +576,7 @@ export const ComboSequence: React.FC<Props> = ({
           <button
             onClick={() => setActiveChainIndex(validChainIndex + 1)}
             className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center w-12 h-4 rounded-full bg-[#0c0c11]/95 hover:bg-[#1a1a24] text-zinc-400 hover:text-white border border-zinc-700/80 hover:border-zinc-400 shadow-[0_4px_16px_rgba(0,0,0,0.9),0_0_10px_rgba(255,255,255,0.12)] backdrop-blur-md transition cursor-pointer"
-            title={`Следующая: ${chains[validChainIndex + 1]?.name || 'цепочка'}`}
+            title={`Следующая: ${chains[validChainIndex + 1]?.triggerAfterChainId === 'priority' ? 'Приоритет' : 'Постоянно'}`}
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
@@ -564,6 +587,9 @@ export const ComboSequence: React.FC<Props> = ({
           {chains.map((chain, chainIdx) => {
             const offset = chainIdx - validChainIndex;
             const isCurrent = offset === 0;
+            const isPriority = chain.triggerAfterChainId === 'priority';
+            const priorityChains = chains.filter(c => c.triggerAfterChainId === 'priority');
+            const priorityRank = priorityChains.findIndex(c => c.id === chain.id);
 
             return (
               <div
@@ -576,26 +602,72 @@ export const ComboSequence: React.FC<Props> = ({
                   visibility: Math.abs(offset) <= 1 ? 'visible' : 'hidden',
                 }}
               >
-                <div className="w-full bg-[#08080c] border border-zinc-800/90 rounded-xl p-3 shadow-[0_6px_25px_rgba(0,0,0,0.95)] flex flex-col gap-2.5 relative">
+                <div
+                  className={`w-full rounded-xl p-3 shadow-[0_6px_25px_rgba(0,0,0,0.95)] flex flex-col gap-2.5 relative transition-all duration-200 ${
+                    isPriority
+                      ? 'bg-[#0c0905] border-2 border-amber-500/90 shadow-[0_0_24px_rgba(245,158,11,0.2),inset_0_1px_0_rgba(251,191,36,0.15)]'
+                      : 'bg-[#08080c] border border-zinc-800/90'
+                  }`}
+                >
                   {/* Chain Header & Parameters */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2 text-xs">
-                    {/* Left: Chain Title & Order */}
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-200 shadow-[0_0_8px_rgba(255,255,255,0.85)]"></div>
-                      <input
-                        type="text"
-                        value={chain.name}
-                        onChange={(e) => handleUpdateChain(chain.id, { name: e.target.value })}
-                        className="bg-transparent font-medium text-zinc-100 text-xs hover:border-b border-zinc-600 focus:border-zinc-300 outline-none px-1 py-0.5 max-w-[150px]"
-                        title="Нажмите для переименования цепочки"
+                    {/* Left: Priority / Permanent Badge & Order */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isPriority
+                            ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]'
+                            : 'bg-zinc-200 shadow-[0_0_8px_rgba(255,255,255,0.85)]'
+                        }`}
                       />
+
+                      {/* Mode Badge (Приоритет или Постоянно) */}
+                      {isPriority ? (
+                        <div
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/80 text-amber-300 font-bold text-[10.5px] tracking-wide shadow-[0_0_10px_rgba(245,158,11,0.3)] select-none shrink-0"
+                          title="Приоритетная цепочка: проверяется сверху вниз при готовности скиллов"
+                        >
+                          <Zap className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
+                          <span>{priorityRank !== -1 ? `Приоритет ${priorityRank + 1}` : 'Приоритет'}</span>
+                        </div>
+                      ) : (
+                        <div
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/80 text-zinc-200 font-semibold text-[10.5px] tracking-wide shadow-[0_0_8px_rgba(255,255,255,0.06)] select-none shrink-0"
+                          title="Постоянная цепочка"
+                        >
+                          <span>Постоянно</span>
+                        </div>
+                      )}
+
                       <span className="text-zinc-500 font-mono text-[10px]">
                         (№ {chain.order})
                       </span>
                     </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex items-center gap-1.5">
+                    {/* Right: Actions (Reorder ▲▼, Reset, Delete) */}
+                    <div className="flex items-center gap-1">
+                      {/* Move Up */}
+                      <button
+                        type="button"
+                        disabled={chainIdx === 0}
+                        onClick={() => handleMoveChainUp(chainIdx)}
+                        title="Поднять цепочку выше (повысить приоритет)"
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800/70 p-1 rounded transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed text-[10px] flex items-center justify-center leading-none"
+                      >
+                        ▲
+                      </button>
+
+                      {/* Move Down */}
+                      <button
+                        type="button"
+                        disabled={chainIdx === chains.length - 1}
+                        onClick={() => handleMoveChainDown(chainIdx)}
+                        title="Опустить цепочку ниже (понизить приоритет)"
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800/70 p-1 rounded transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed text-[10px] flex items-center justify-center leading-none"
+                      >
+                        ▼
+                      </button>
+
                       {/* Reset Steps in Chain */}
                       <button
                         onClick={() => handleClearAllChainSteps(chain.id)}
@@ -619,33 +691,49 @@ export const ComboSequence: React.FC<Props> = ({
                   </div>
 
                   {/* Flow Trigger & Periodicity Settings */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-[#040406] p-1.5 rounded-lg border border-zinc-800/80">
-                    {/* Execution Trigger */}
+                  <div
+                    className={`flex flex-wrap items-center justify-between gap-2 text-[11px] p-1.5 rounded-lg border transition-colors ${
+                      isPriority
+                        ? 'bg-[#120d06] border-amber-800/70'
+                        : 'bg-[#040406] border-zinc-800/80'
+                    }`}
+                  >
+                    {/* Execution Trigger: Only 2 options (Постоянно и Приоритет) */}
                     <div className="flex items-center gap-1 text-zinc-400">
-                      <CornerDownRight className="w-3 h-3 text-zinc-500 shrink-0" />
-                      <span className="text-[10px]">Пуск:</span>
+                      <CornerDownRight className={`w-3 h-3 shrink-0 ${isPriority ? 'text-amber-400' : 'text-zinc-500'}`} />
+                      <span className="text-[10px]">{isPriority ? 'Режим:' : 'Пуск:'}</span>
                       <select
-                        value={chain.triggerAfterChainId}
-                        onChange={(e) => handleUpdateChain(chain.id, { triggerAfterChainId: e.target.value })}
-                        className="bg-[#0e0e14] text-zinc-200 px-1.5 py-0.5 rounded border border-zinc-700/80 outline-none text-[11px] cursor-pointer focus:border-zinc-400"
+                        value={isPriority ? 'priority' : 'always'}
+                        onChange={(e) => {
+                          const newTrigger = e.target.value;
+                          handleUpdateChain(chain.id, {
+                            triggerAfterChainId: newTrigger,
+                            name: newTrigger === 'priority' ? 'Приоритет' : 'Постоянно',
+                          });
+                        }}
+                        className={`px-1.5 py-0.5 rounded border outline-none text-[11px] cursor-pointer focus:border-zinc-400 ${
+                          isPriority
+                            ? 'bg-[#181208] border-amber-600/90 text-amber-200 font-semibold shadow-[0_0_8px_rgba(245,158,11,0.2)]'
+                            : 'bg-[#0e0e14] border-zinc-700/80 text-zinc-200'
+                        }`}
                       >
-                        <option value="start">Сразу (в начале)</option>
                         <option value="always">Постоянно</option>
-                        {chains
-                          .filter(c => c.id !== chain.id)
-                          .map(c => (
-                            <option key={c.id} value={c.id}>
-                              После {c.name}
-                            </option>
-                          ))}
+                        <option value="priority">Приоритет</option>
                       </select>
                     </div>
 
                     {/* Periodicity (Cooldown) */}
                     <div className="flex items-center gap-1 text-zinc-400">
-                      <Clock className="w-3 h-3 text-zinc-500 shrink-0" />
-                      <span className="text-[10px]">Период:</span>
-                      <div className="bg-[#0e0e14] border border-zinc-700/80 focus-within:border-zinc-400 rounded px-1 py-0.5 shadow-inner">
+                      <Clock className={`w-3 h-3 shrink-0 ${isPriority ? 'text-amber-400' : 'text-zinc-500'}`} />
+                      <span className="text-[10px]">{isPriority ? 'Запасной CD:' : 'Период:'}</span>
+                      <div
+                        className={`rounded px-1 py-0.5 shadow-inner border focus-within:border-zinc-400 ${
+                          isPriority
+                            ? 'bg-[#181208] border-amber-600/80'
+                            : 'bg-[#0e0e14] border-zinc-700/80'
+                        }`}
+                        title={isPriority ? "Запасной таймер, если бот не видит откат на панели. 0 — только по готовности скиллов" : undefined}
+                      >
                         <input
                           type="number"
                           step="1"
@@ -656,10 +744,13 @@ export const ComboSequence: React.FC<Props> = ({
                             const val = parseFloat(e.target.value) || 0;
                             handleUpdateChain(chain.id, { cooldown: val });
                           }}
-                          className="w-7 bg-transparent text-zinc-100 text-[11px] font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          className={`w-7 bg-transparent text-[11px] font-mono outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                            isPriority ? 'text-amber-200 font-bold' : 'text-zinc-100'
+                          }`}
+                          title={isPriority ? "Запасной таймер, если бот не видит откат на панели. 0 — только по готовности скиллов" : "Периодичность (сек)"}
                         />
                       </div>
-                      <span className="text-[10px] text-zinc-500">с</span>
+                      <span className={`text-[10px] ${isPriority ? 'text-amber-400/80' : 'text-zinc-500'}`}>с</span>
 
                       {/* Exclamation 1: Periodicity */}
                       <div
@@ -667,10 +758,14 @@ export const ComboSequence: React.FC<Props> = ({
                         onMouseLeave={() => setIsPeriodicityTipHovered(false)}
                         className={`w-3.5 h-3.5 rounded-full flex items-center justify-center cursor-help transition ${
                           isPeriodicityTipHovered
-                            ? 'text-white bg-zinc-800/90 shadow-[0_0_10px_rgba(255,255,255,0.5)] scale-110'
+                            ? isPriority
+                              ? 'text-amber-200 bg-amber-900/90 shadow-[0_0_10px_rgba(245,158,11,0.6)] scale-110'
+                              : 'text-white bg-zinc-800/90 shadow-[0_0_10px_rgba(255,255,255,0.5)] scale-110'
+                            : isPriority
+                            ? 'text-amber-400 hover:text-amber-200'
                             : 'text-zinc-400/80 hover:text-white'
                         }`}
-                        title="Подсказка о периодичности"
+                        title={isPriority ? "Запасной таймер, если бот не видит откат на панели. 0 — только по готовности скиллов" : "Подсказка о периодичности"}
                       >
                         <AlertCircle className="w-3.5 h-3.5 stroke-[2.2]" />
                       </div>
@@ -701,27 +796,47 @@ export const ComboSequence: React.FC<Props> = ({
                         const skillCd = step.skillCooldownSeconds ?? 6;
 
                         return (
-                          <div
-                            key={step.id}
-                            className={`w-[46px] h-[46px] rounded-lg p-0.5 relative flex flex-col items-center justify-center select-none group transition-all duration-200 shrink-0 ${
-                              isCasting
-                                ? 'ring-2 ring-zinc-200 shadow-[0_0_22px_rgba(255,255,255,0.85)] scale-105 bg-[#22222d] z-20'
-                                : isIndependent
-                                ? 'bg-[#0e1017] border border-zinc-600/90 shadow-[0_0_10px_rgba(255,255,255,0.06)] hover:border-zinc-300 hover:bg-[#151722]'
-                                : 'bg-[#0d0d12] border border-zinc-800/90 hover:border-zinc-400 hover:shadow-[0_0_16px_rgba(220,225,235,0.4)] hover:bg-[#161622]'
-                            }`}
-                            style={{
-                              boxShadow: isCasting
-                                ? '0 0 18px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.2)'
-                                : isIndependent
-                                ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.85)'
-                                : 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 5px rgba(0,0,0,0.8)',
-                            }}
-                          >
-                            {/* Step Index number in top-left */}
-                            <div className="absolute top-0.5 left-1 z-10 text-[8px] font-mono text-zinc-500 pointer-events-none group-hover:text-zinc-300">
-                              {idx + 1}
-                            </div>
+                          <React.Fragment key={step.id}>
+                            {/* Directional arrow between priority steps (1 → 2 → 3) */}
+                            {idx > 0 && isPriority && (
+                              <div
+                                className="flex items-center justify-center text-amber-400/90 select-none shrink-0 -mx-0.5"
+                                title="Строгий порядок нажатия: следующий шаг"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                              </div>
+                            )}
+
+                            <div
+                              className={`w-[46px] h-[46px] rounded-lg p-0.5 relative flex flex-col items-center justify-center select-none group transition-all duration-200 shrink-0 ${
+                                isCasting
+                                  ? 'ring-2 ring-zinc-200 shadow-[0_0_22px_rgba(255,255,255,0.85)] scale-105 bg-[#22222d] z-20'
+                                  : isPriority
+                                  ? 'bg-[#120e08] border border-amber-600/80 shadow-[0_0_12px_rgba(245,158,11,0.15)] hover:border-amber-400 hover:bg-[#1a140b]'
+                                  : isIndependent
+                                  ? 'bg-[#0e1017] border border-zinc-600/90 shadow-[0_0_10px_rgba(255,255,255,0.06)] hover:border-zinc-300 hover:bg-[#151722]'
+                                  : 'bg-[#0d0d12] border border-zinc-800/90 hover:border-zinc-400 hover:shadow-[0_0_16px_rgba(220,225,235,0.4)] hover:bg-[#161622]'
+                              }`}
+                              style={{
+                                boxShadow: isCasting
+                                  ? '0 0 18px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.2)'
+                                  : isPriority
+                                  ? 'inset 0 1px 0 rgba(251,191,36,0.15), 0 2px 6px rgba(0,0,0,0.85)'
+                                  : isIndependent
+                                  ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.85)'
+                                  : 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 5px rgba(0,0,0,0.8)',
+                              }}
+                            >
+                              {/* Step Index number in top-left */}
+                              <div
+                                className={`absolute top-0.5 left-1 z-10 font-mono pointer-events-none ${
+                                  isPriority
+                                    ? 'text-[8.5px] font-bold text-amber-300 drop-shadow-[0_0_4px_rgba(245,158,11,0.6)]'
+                                    : 'text-[8px] text-zinc-500 group-hover:text-zinc-300'
+                                }`}
+                              >
+                                {idx + 1}
+                              </div>
 
                             {/* Delete Step button in top-right (on hover) */}
                             {chain.steps.length > 1 && (
@@ -789,52 +904,68 @@ export const ComboSequence: React.FC<Props> = ({
                               {castSec > 0 ? `${castSec}s` : '0s'}
                             </button>
                           </div>
-                        );
-                      })}
+                        </React.Fragment>
+                      );
+                    })}
 
-                      {/* Add Step '+' button */}
-                      <button
-                        onClick={() => handleAddStepToChain(chain.id)}
-                        title="Добавить шаг в комбинацию"
-                        className="w-[46px] h-[46px] rounded-lg border border-dashed border-zinc-800 hover:border-zinc-400 hover:text-white hover:bg-[#14141c] hover:shadow-[0_0_16px_rgba(255,255,255,0.3)] transition flex items-center justify-center text-zinc-500 cursor-pointer shrink-0 group"
-                      >
-                        <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                      </button>
-                    </div>
+                    {/* Add Step '+' button */}
+                    <button
+                      onClick={() => handleAddStepToChain(chain.id)}
+                      title="Добавить шаг в комбинацию"
+                      className="w-[46px] h-[46px] rounded-lg border border-dashed border-zinc-800 hover:border-zinc-400 hover:text-white hover:bg-[#14141c] hover:shadow-[0_0_16px_rgba(255,255,255,0.3)] transition flex items-center justify-center text-zinc-500 cursor-pointer shrink-0 group"
+                    >
+                      <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                    </button>
+                  </div>
 
-                    {/* Notification Box in the empty area on the right (exclamation marks, capture skills button & view skills button) */}
-                    {chainIdx === validChainIndex && (isPeriodicityTipHovered || isCastTimeTipHovered || isCaptureButtonTipHovered || isViewSkillsTipHovered) && (
-                      <div className="absolute right-0 bottom-0 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                        <div className="w-[220px] sm:w-[245px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
-                          {isViewSkillsTipHovered ? (
+                  {/* Notification Box in the empty area on the right (exclamation marks, capture skills button & view skills button) */}
+                  {chainIdx === validChainIndex && (isPeriodicityTipHovered || isCastTimeTipHovered || isCaptureButtonTipHovered || isViewSkillsTipHovered) && (
+                    <div className="absolute right-0 bottom-0 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                      <div className="w-[220px] sm:w-[245px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
+                        {isViewSkillsTipHovered ? (
+                          <>
+                            <div className="flex items-center gap-1.5 leading-none mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
+                                Обзор
+                              </span>
+                              <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
+                                Посмотреть скилы
+                              </span>
+                            </div>
+                            <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
+                              Показывает 12 слотов скиллов и состояние готовности
+                            </p>
+                          </>
+                        ) : isCaptureButtonTipHovered ? (
+                          <>
+                            <div className="flex items-center gap-1.5 leading-none mb-1">
+                              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
+                                Снимок
+                              </span>
+                              <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
+                                Снять скиллы
+                              </span>
+                            </div>
+                            <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
+                              Фотографирует панель скиллов в игре для распознавания откатов
+                            </p>
+                          </>
+                        ) : isPeriodicityTipHovered ? (
+                          isPriority ? (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
-                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
-                                  Обзор
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-200 font-mono font-bold text-[9px] border border-amber-600 shadow-[0_0_6px_rgba(245,158,11,0.25)]">
+                                  Запасной CD
                                 </span>
-                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
-                                  Посмотреть скилы
-                                </span>
-                              </div>
-                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
-                                Показывает 12 слотов скиллов и состояние готовности
-                              </p>
-                            </>
-                          ) : isCaptureButtonTipHovered ? (
-                            <>
-                              <div className="flex items-center gap-1.5 leading-none mb-1">
-                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
-                                  Снимок
-                                </span>
-                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
-                                  Снять скиллы
+                                <span className="font-semibold text-amber-200 text-[11px] truncate drop-shadow-[0_0_6px_rgba(245,158,11,0.3)]">
+                                  Период (приоритет)
                                 </span>
                               </div>
-                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
-                                Фотографирует панель скиллов в игре для распознавания откатов
+                              <p className="text-[9px] leading-tight text-amber-100/90 font-normal">
+                                Запасной таймер, если бот не видит откат на панели. 0 — только по готовности скиллов
                               </p>
                             </>
-                          ) : isPeriodicityTipHovered ? (
+                          ) : (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
                                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
@@ -848,7 +979,8 @@ export const ComboSequence: React.FC<Props> = ({
                                 Откат самого долгого умения цепочки.
                               </p>
                             </>
-                          ) : (
+                          )
+                        ) : (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
                                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">

@@ -307,10 +307,10 @@ export interface ComboChain {
 export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
   {
     id: "chain_1",
-    name: "Цепочка #1 (Основная)",
+    name: "Постоянная",
     order: 1,
     cooldown: 0,
-    triggerAfterChainId: "start",
+    triggerAfterChainId: "always",
     steps: [
       { id: "s1_1", key: "1", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
       { id: "s1_2", key: "2", cooldown: 8.0, castTimeSeconds: 0, repeatCount: 1 },
@@ -322,10 +322,10 @@ export const DEFAULT_COMBO_CHAINS: ComboChain[] = [
   },
   {
     id: "chain_2",
-    name: "Цепочка #2 (Бурст)",
+    name: "Приоритет 1",
     order: 2,
     cooldown: 15,
-    triggerAfterChainId: "chain_1",
+    triggerAfterChainId: "priority",
     steps: [
       { id: "s2_1", key: "R", cooldown: 12.0, castTimeSeconds: 1, repeatCount: 1 },
       { id: "s2_2", key: "F", cooldown: 15.0, castTimeSeconds: 0, repeatCount: 1 },
