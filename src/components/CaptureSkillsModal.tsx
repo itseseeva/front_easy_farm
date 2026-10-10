@@ -127,22 +127,15 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
 
   if (!isOpen || !result) return null;
 
-  // Filter out Q and C as requested by user ("q c можно убрать нам эти кнпоки не важны")
+  // Show all slots from backend response except row === "top"
   const rawSlots = Array.isArray(result.slots) ? result.slots : [];
-  const visibleSlots = rawSlots.filter((s) => {
-    const k = String(s?.key ?? '').toLowerCase();
-    return k !== 'q' && k !== 'c';
-  });
+  const visibleSlots = rawSlots.filter((s) => s?.row !== 'top');
 
   const totalSlots = visibleSlots.length;
   const okSlotsCount = visibleSlots.filter((s) => Boolean(s?.ok)).length;
   const issueSlotsCount = totalSlots - okSlotsCount;
   const isOkResult = Boolean(result.ok);
   const allOk = isOkResult && totalSlots > 0 && issueSlotsCount === 0;
-
-  // Split the 12 slots into group 1 (1..6) and group 2 (7..=) with gap between 6 and 7
-  const group1 = visibleSlots.slice(0, 6);
-  const group2 = visibleSlots.slice(6, 12);
 
   return (
     <div
@@ -184,7 +177,7 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 min-h-0 overflow-y-auto py-2.5 sm:py-3 flex flex-col gap-2.5 sm:gap-3 pr-0.5">
-          {/* Summary Line: «Снято 12 из 12» (зелёным) или «10 в порядке, 2 проверь» (жёлтым) + подсказка */}
+          {/* Summary Line: «Снято N из N» (зелёным) или «M в порядке, K проверь» (жёлтым) + подсказка */}
           <div
             className={`rounded-xl px-3 py-2 border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 shrink-0 ${
               allOk
@@ -218,36 +211,20 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
             )}
           </div>
 
-          {/* In-Game Style Skill Bar Frame - 12 slots in one beautiful row */}
+          {/* In-Game Style Skill Bar Frame - All slots in one row in backend order */}
           <div
             className="w-full bg-[#050608] border border-zinc-800/90 rounded-xl py-3 px-2 sm:px-3 flex flex-col items-center justify-center shadow-inner overflow-hidden"
           >
             {visibleSlots.length > 0 ? (
               <div className="w-full flex items-center justify-center overflow-hidden select-none">
                 <div
-                  className="grid items-center justify-center gap-1 sm:gap-1.5 w-full max-w-[500px]"
+                  className="grid items-center justify-center gap-1 sm:gap-1.5 w-full max-w-[520px]"
                   style={{
-                    gridTemplateColumns:
-                      group2.length > 0
-                        ? 'repeat(6, minmax(0, 1fr)) 12px repeat(6, minmax(0, 1fr))'
-                        : `repeat(${visibleSlots.length}, minmax(0, 1fr))`,
+                    gridTemplateColumns: `repeat(${Math.max(1, visibleSlots.length)}, minmax(0, 1fr))`,
                   }}
                 >
-                  {/* First 6 slots (1 2 3 4 5 6) */}
-                  {group1.map((slot, idx) => (
-                    <SkillTile key={`slot-g1-${slot.key}-${idx}`} slot={slot} />
-                  ))}
-
-                  {/* Visual separation gap between 6 and 7 (like in game) */}
-                  {group2.length > 0 && (
-                    <div className="flex items-center justify-center h-full select-none pointer-events-none">
-                      <div className="w-[1.5px] h-5 bg-zinc-800/80 rounded-full" />
-                    </div>
-                  )}
-
-                  {/* Second 6 slots (7 8 9 0 - =) */}
-                  {group2.map((slot, idx) => (
-                    <SkillTile key={`slot-g2-${slot.key}-${idx}`} slot={slot} />
+                  {visibleSlots.map((slot, idx) => (
+                    <SkillTile key={`slot-${slot.key}-${idx}`} slot={slot} />
                   ))}
                 </div>
               </div>
