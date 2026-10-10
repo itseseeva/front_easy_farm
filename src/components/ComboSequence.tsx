@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ComboChain, ChainStep } from '../data/skillsLibrary';
-import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2 } from 'lucide-react';
-import { CaptureSkillsModal } from './CaptureSkillsModal';
+import { Plus, Clock, CornerDownRight, ChevronUp, ChevronDown, RotateCcw, AlertCircle, Trash2, Camera, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { CaptureProgressToast, CaptureProgressState } from './CaptureProgressToast';
-import { CaptureSkillsResponse, CaptureSkillsSlot } from '../types';
+import { soundManager } from '../utils/sound';
 
 interface Props {
   chains: ComboChain[];
@@ -16,76 +15,6 @@ interface Props {
 
 const MAX_CAST_SECONDS = 5;
 
-function createMockSkillIcon(key: string, hue: number, isDark = false): string {
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-    // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, 64, 64);
-    if (isDark) {
-      grad.addColorStop(0, '#121216');
-      grad.addColorStop(1, '#08080a');
-    } else {
-      grad.addColorStop(0, `hsl(${hue}, 65%, 28%)`);
-      grad.addColorStop(1, `hsl(${(hue + 40) % 360}, 75%, 15%)`);
-    }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
-
-    // Inner geometric emblem/pattern to feel like an RPG skill icon
-    ctx.strokeStyle = isDark ? '#27272a' : `hsla(${hue}, 80%, 75%, 0.4)`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(6, 6, 52, 52);
-
-    ctx.fillStyle = isDark ? '#3f3f46' : `hsl(${hue}, 70%, 55%)`;
-    ctx.beginPath();
-    ctx.arc(32, 28, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = isDark ? '#18181b' : '#ffffff';
-    ctx.font = 'bold 22px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(key.toUpperCase(), 32, 30);
-
-    return canvas.toDataURL('image/png');
-  } catch (e) {
-    return '';
-  }
-}
-
-function createMockSkillSlots(): CaptureSkillsSlot[] {
-  // 12 slots without Q and C:
-  // 1, 2, 3, 4, 5, 6 | 7, 8, 9, 0, -, =
-  // 2 slots with ok: false and status "тёмный: пустой или откат?" ("5" and "-")
-  const rawDefinitions = [
-    { key: '1', row: 'bottom', hue: 215, ok: true, status: 'ok', brightness: 124 },
-    { key: '2', row: 'bottom', hue: 260, ok: true, status: 'ok', brightness: 120 },
-    { key: '3', row: 'bottom', hue: 320, ok: true, status: 'ok', brightness: 115 },
-    { key: '4', row: 'bottom', hue: 140, ok: true, status: 'ok', brightness: 128 },
-    { key: '5', row: 'bottom', hue: 45, ok: false, status: 'тёмный: пустой или откат?', brightness: 46 },
-    { key: '6', row: 'bottom', hue: 185, ok: true, status: 'ok', brightness: 116 },
-    { key: '7', row: 'bottom', hue: 345, ok: true, status: 'ok', brightness: 119 },
-    { key: '8', row: 'bottom', hue: 100, ok: true, status: 'ok', brightness: 121 },
-    { key: '9', row: 'bottom', hue: 240, ok: true, status: 'ok', brightness: 114 },
-    { key: '0', row: 'bottom', hue: 30, ok: true, status: 'ok', brightness: 125 },
-    { key: '-', row: 'bottom', hue: 60, ok: false, status: 'тёмный: пустой или откат?', brightness: 42 },
-    { key: '=', row: 'bottom', hue: 165, ok: true, status: 'ok', brightness: 127 },
-  ];
-
-  return rawDefinitions.map((item) => ({
-    key: item.key,
-    row: item.row,
-    icon_png: createMockSkillIcon(item.key, item.hue, !item.ok),
-    brightness: item.brightness,
-    ok: item.ok,
-    status: item.status,
-  }));
-}
-
 export const ComboSequence: React.FC<Props> = ({
   chains,
   onChainsChange,
@@ -96,8 +25,6 @@ export const ComboSequence: React.FC<Props> = ({
 }) => {
   // Capture Skills state
   const [isCapturing, setIsCapturing] = useState(false);
-  const [captureResult, setCaptureResult] = useState<CaptureSkillsResponse | null>(null);
-  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
   const [captureProgress, setCaptureProgress] = useState<CaptureProgressState | null>(null);
   const captureToastTimeoutRef = useRef<any>(null);
 
@@ -132,9 +59,11 @@ export const ComboSequence: React.FC<Props> = ({
   // Active Chain for vertical navigation
   const [activeChainIndex, setActiveChainIndex] = useState(0);
 
-  // Exclamation mark tooltips hover state
+  // Exclamation mark tooltips & capture button hover state
   const [isPeriodicityTipHovered, setIsPeriodicityTipHovered] = useState(false);
   const [isCastTimeTipHovered, setIsCastTimeTipHovered] = useState(false);
+  const [isCaptureButtonTipHovered, setIsCaptureButtonTipHovered] = useState(false);
+  const [isCaptureSuccess, setIsCaptureSuccess] = useState(false);
 
   // Active step being configured in modal
   const [editingStep, setEditingStep] = useState<{ chainId: string; stepId: string } | null>(null);
@@ -397,10 +326,11 @@ export const ComboSequence: React.FC<Props> = ({
     setEditingStep(null);
   };
 
-  // Capture skills snapshot action
+  // Capture skills snapshot action with animation, sound, and notification
   const handleCaptureSkills = async () => {
     if (isBotRunning || isCapturing) return;
     setIsCapturing(true);
+    setIsCaptureSuccess(false);
 
     // Initial toast: "Переключитесь на игру и ждите"
     setCaptureProgress({
@@ -450,20 +380,33 @@ export const ComboSequence: React.FC<Props> = ({
           }, 80);
         }
 
-        setCaptureResult(res);
-        setIsCaptureModalOpen(true);
+        // Filter out Q and C if any, and check if all remaining skills are ready/ok
+        const skillSlots = res.slots.filter((s: any) => {
+          const k = String(s.key || '').toLowerCase();
+          return k !== 'q' && k !== 'c';
+        });
 
-        if (res.ok) {
+        const allSkillsOk = res.ok && skillSlots.length > 0 && skillSlots.every((s: any) => Boolean(s.ok));
+
+        if (allSkillsOk) {
+          setIsCaptureSuccess(true);
+          soundManager.playSkillsReady();
           setCaptureProgress({
             stage: 'done',
             secondsLeft: 0,
-            message: res.message || 'Готово',
+            message: 'Скиллы готовы! Все снимки успешно сохранены',
           });
+          setTimeout(() => setIsCaptureSuccess(false), 5000);
         } else {
+          setIsCaptureSuccess(false);
+          soundManager.playSkillsError();
+          const badCount = skillSlots.filter((s: any) => !s.ok).length;
           setCaptureProgress({
             stage: 'error',
             secondsLeft: 0,
-            message: res.message || 'Ошибка съемки',
+            message: badCount > 0
+              ? `${badCount} ${badCount === 1 ? 'скилл не готов' : 'скилла не готовы'} (откат или темно) — попробуйте ещё раз`
+              : (res.message || 'Скиллы не готовы — попробуйте ещё раз'),
           });
         }
 
@@ -486,20 +429,17 @@ export const ComboSequence: React.FC<Props> = ({
         setCaptureProgress({ stage: 'save', secondsLeft: 0 });
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        const mockRes: CaptureSkillsResponse = {
-          ok: true,
-          message: 'Снимки сохранены',
-          preview_png: null,
-          slots: createMockSkillSlots(),
-        };
-        setCaptureResult(mockRes);
-        setIsCaptureModalOpen(true);
+        // In preview mode: demonstrate success with sound!
+        setIsCaptureSuccess(true);
+        soundManager.playSkillsReady();
 
         setCaptureProgress({
           stage: 'done',
           secondsLeft: 0,
-          message: 'Готово',
+          message: 'Скиллы готовы! Все снимки успешно сохранены',
         });
+
+        setTimeout(() => setIsCaptureSuccess(false), 5000);
 
         if (captureToastTimeoutRef.current) clearTimeout(captureToastTimeoutRef.current);
         captureToastTimeoutRef.current = setTimeout(() => {
@@ -507,10 +447,12 @@ export const ComboSequence: React.FC<Props> = ({
         }, 4000);
       }
     } catch (err: any) {
+      soundManager.playSkillsError();
+      setIsCaptureSuccess(false);
       setCaptureProgress({
         stage: 'error',
         secondsLeft: 0,
-        message: err?.message || 'Ошибка связи с бэкендом',
+        message: err?.message || 'Ошибка съемки — попробуйте ещё раз',
       });
       if (captureToastTimeoutRef.current) clearTimeout(captureToastTimeoutRef.current);
       captureToastTimeoutRef.current = setTimeout(() => {
@@ -796,11 +738,25 @@ export const ComboSequence: React.FC<Props> = ({
                       </button>
                     </div>
 
-                    {/* Notification Box in the red-circled empty area on the right */}
-                    {(isPeriodicityTipHovered || isCastTimeTipHovered) && (
+                    {/* Notification Box in the empty area on the right (exclamation marks & capture skills button) */}
+                    {chainIdx === validChainIndex && (isPeriodicityTipHovered || isCastTimeTipHovered || isCaptureButtonTipHovered) && (
                       <div className="absolute right-0 bottom-0 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
-                        <div className="w-[220px] sm:w-[235px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
-                          {isPeriodicityTipHovered ? (
+                        <div className="w-[220px] sm:w-[245px] h-[46px] px-2.5 py-1 rounded-xl bg-[#0b0b10]/98 border border-zinc-600 text-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.95),0_0_16px_rgba(255,255,255,0.16)] backdrop-blur-md flex flex-col justify-center">
+                          {isCaptureButtonTipHovered ? (
+                            <>
+                              <div className="flex items-center gap-1.5 leading-none mb-1">
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
+                                  Снимок
+                                </span>
+                                <span className="font-semibold text-zinc-100 text-[11px] truncate drop-shadow-[0_0_6px_rgba(255,255,255,0.2)]">
+                                  Снять скиллы
+                                </span>
+                              </div>
+                              <p className="text-[9.5px] leading-tight text-zinc-300 font-normal truncate">
+                                Фотографирует панель скиллов в игре для распознавания откатов
+                              </p>
+                            </>
+                          ) : isPeriodicityTipHovered ? (
                             <>
                               <div className="flex items-center gap-1.5 leading-none mb-1">
                                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-100 font-mono font-bold text-[9px] border border-zinc-600 shadow-[0_0_6px_rgba(255,255,255,0.12)]">
@@ -856,37 +812,54 @@ export const ComboSequence: React.FC<Props> = ({
         </span>
       </div>
 
-      {/* Capture Skills Section */}
-      <div className="flex flex-col items-center gap-1 pt-1.5 border-t border-zinc-800/80 mt-0.5">
+      {/* Capture Skills Section - Fashionable animated button without extra modal or caption */}
+      <div className="flex flex-col items-center pt-1.5 border-t border-zinc-800/80 mt-0.5">
         <button
           type="button"
           disabled={isBotRunning || isCapturing}
           onClick={handleCaptureSkills}
-          title={isBotRunning ? 'Останови бота' : 'Снять панель скиллов'}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer select-none border ${
+          onMouseEnter={() => setIsCaptureButtonTipHovered(true)}
+          onMouseLeave={() => setIsCaptureButtonTipHovered(false)}
+          className={`relative group overflow-hidden flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-300 cursor-pointer select-none border active:scale-95 ${
             isBotRunning
-              ? 'bg-[#0e0e13] border-zinc-800/60 text-zinc-500 cursor-not-allowed opacity-60'
+              ? 'bg-[#0a0a0f] border-zinc-800/50 text-zinc-500 cursor-not-allowed opacity-50'
               : isCapturing
-              ? 'bg-[#15161f] border-zinc-700 text-zinc-300'
-              : 'bg-[#101117] hover:bg-[#181924] text-zinc-200 border-zinc-800 hover:border-zinc-600 shadow-[0_0_12px_rgba(255,255,255,0.04)]'
+              ? 'bg-gradient-to-r from-violet-950/60 via-indigo-950/70 to-purple-950/60 border-indigo-500/80 text-indigo-100 shadow-[0_0_25px_rgba(99,102,241,0.35)]'
+              : isCaptureSuccess
+              ? 'bg-gradient-to-r from-emerald-950/70 via-teal-900/60 to-emerald-950/70 border-emerald-400 text-emerald-100 shadow-[0_0_30px_rgba(16,185,129,0.45)]'
+              : 'bg-gradient-to-b from-[#181926] via-[#10111a] to-[#0a0b12] hover:from-[#202235] hover:to-[#121320] text-zinc-100 border-zinc-700/80 hover:border-zinc-400 shadow-[0_4px_20px_rgba(0,0,0,0.8),0_0_15px_rgba(255,255,255,0.06)] hover:shadow-[0_4px_25px_rgba(0,0,0,0.9),0_0_22px_rgba(255,255,255,0.18)]'
           }`}
         >
+          {/* Subtle glowing ambient pulse when capturing */}
+          {isCapturing && (
+            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/20 to-indigo-500/10 animate-pulse pointer-events-none" />
+          )}
+
+          {/* Animated Sheen effect on hover */}
+          <span className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:left-[100%] transition-all duration-1000 ease-in-out pointer-events-none" />
+
           {isCapturing ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 text-zinc-300 animate-spin shrink-0" />
-              <span>Снимаю панель скиллов…</span>
+              <Loader2 className="w-4 h-4 text-indigo-300 animate-spin shrink-0" />
+              <span className="relative z-10 text-indigo-200 animate-pulse">
+                Снимаю панель скиллов…
+              </span>
+            </>
+          ) : isCaptureSuccess ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="relative z-10 text-emerald-200">
+                Скиллы готовы!
+              </span>
             </>
           ) : (
             <>
-              <Camera className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
-              <span>Снять скиллы</span>
+              <Camera className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors shrink-0 group-hover:scale-110 duration-200" />
+              <span className="relative z-10">Снять скиллы</span>
+              <Sparkles className="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-300 opacity-60 group-hover:opacity-100 transition-all shrink-0 ml-0.5" />
             </>
           )}
         </button>
-
-        <span className="text-[10px] text-zinc-500 text-center leading-tight max-w-[340px]">
-          Вне боя, все скиллы готовы (без цифр отката). Окно программы свернётся на ~10 секунд
-        </span>
       </div>
 
       {/* Step Settings Modal: Compact & Adaptive «Редактор шага» */}
@@ -1049,15 +1022,6 @@ export const ComboSequence: React.FC<Props> = ({
           </div>
         </div>
       )}
-
-      {/* Capture Skills Result Modal */}
-      <CaptureSkillsModal
-        isOpen={isCaptureModalOpen}
-        result={captureResult}
-        onClose={() => setIsCaptureModalOpen(false)}
-        onRetry={handleCaptureSkills}
-        isLoading={isCapturing}
-      />
 
       {/* Capture Skills Progress Toast (displays during countdown, persists 4s after finish) */}
       <CaptureProgressToast

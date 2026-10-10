@@ -442,7 +442,10 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-black text-zinc-300 flex flex-col selection:bg-zinc-700 selection:text-white justify-center items-center p-1 sm:p-2 md:p-4">
       {/* Sleek Uber-Black Window Card */}
-      <div className="w-full max-w-[480px] bg-[#07070a] border border-zinc-800/90 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.95),0_0_25px_rgba(255,255,255,0.03)] flex flex-col relative max-h-[98vh] sm:max-h-[96vh]">
+      <div
+        id="app-window-card"
+        className="w-full max-w-[480px] bg-[#07070a] border border-zinc-800/90 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.95),0_0_25px_rgba(255,255,255,0.03)] flex flex-col relative max-h-[98vh] sm:max-h-[96vh]"
+      >
         {/* Compact Header */}
         <header className="bg-[#0b0b0f] border-b border-zinc-800/80 px-3 py-2 flex items-center justify-between gap-2 rounded-t-2xl shrink-0">
           {/* Animated Red Shimmer EZF Logo */}

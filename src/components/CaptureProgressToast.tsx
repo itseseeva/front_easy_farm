@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export interface CaptureProgressState {
@@ -13,6 +14,15 @@ interface CaptureProgressToastProps {
 }
 
 export const CaptureProgressToast: React.FC<CaptureProgressToastProps> = ({ progress, onDismiss }) => {
+  const [mountTarget, setMountTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = document.getElementById('app-window-card');
+    if (el) {
+      setMountTarget(el);
+    }
+  }, []);
+
   if (!progress) return null;
 
   const isDone = progress.stage === 'done';
@@ -36,16 +46,16 @@ export const CaptureProgressToast: React.FC<CaptureProgressToastProps> = ({ prog
     progressPct = 100;
   }
 
-  return (
-    <div className="fixed top-4 right-4 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
+  const toastContent = (
+    <div className="absolute top-12 right-2 sm:right-3 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200 max-w-[calc(100%-16px)]">
       <div
-        className={`pointer-events-auto min-w-[280px] max-w-[340px] rounded-xl border p-3 shadow-[0_16px_36px_rgba(0,0,0,0.9),0_0_20px_rgba(255,255,255,0.04)] backdrop-blur-md transition-all ${
+        className={`pointer-events-auto min-w-[260px] sm:min-w-[280px] max-w-[340px] rounded-xl border p-2.5 sm:p-3 shadow-[0_16px_36px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md transition-all ${
           isDone
             ? 'bg-[#0b1410] border-emerald-800/80 text-emerald-200'
             : isError
             ? 'bg-[#180e10] border-rose-900/80 text-rose-200'
             : isPrompt
-            ? 'bg-[#0f1017] border-zinc-700/90 text-zinc-100 shadow-[0_0_24px_rgba(255,255,255,0.08)]'
+            ? 'bg-[#0f1017] border-zinc-700/90 text-zinc-100 shadow-[0_0_24px_rgba(255,255,255,0.12)]'
             : 'bg-[#0a0b10] border-zinc-800 text-zinc-200'
         }`}
       >
@@ -117,4 +127,10 @@ export const CaptureProgressToast: React.FC<CaptureProgressToastProps> = ({ prog
       </div>
     </div>
   );
+
+  if (mountTarget) {
+    return createPortal(toastContent, mountTarget);
+  }
+
+  return toastContent;
 };
