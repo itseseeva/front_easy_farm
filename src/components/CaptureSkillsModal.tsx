@@ -12,27 +12,38 @@ interface CaptureSkillsModalProps {
 
 interface SkillTileProps {
   slot: CaptureSkillsSlot;
+  size?: number;
 }
 
-const SkillTile: React.FC<SkillTileProps> = ({ slot }) => {
+const SkillTile: React.FC<SkillTileProps> = ({ slot, size }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const displayKey = slot.key.toUpperCase();
   const tooltipText = `Клавиша ${displayKey} · яркость ${slot.brightness} · ${slot.status}`;
 
+  const tileStyle: React.CSSProperties = size
+    ? { width: `${size}px`, height: `${size}px`, aspectRatio: '1 / 1' }
+    : { width: 'var(--tile-size, 40px)', height: 'var(--tile-size, 40px)', aspectRatio: '1 / 1' };
+
+  const wrapperStyle: React.CSSProperties = size
+    ? { width: `${size}px` }
+    : { width: 'var(--tile-size, 40px)' };
+
   return (
     <div
-      className="relative flex flex-col items-center select-none group"
+      className="relative flex flex-col items-center select-none group shrink-0"
+      style={wrapperStyle}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Tile Container */}
+      {/* Square Tile */}
       <div
-        className={`w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-lg p-0.5 relative flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
+        className={`rounded-lg p-0.5 relative flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
           slot.ok
             ? 'border border-emerald-500/80 bg-[#090d0b] shadow-[0_0_12px_rgba(16,185,129,0.18)] hover:border-emerald-400 hover:shadow-[0_0_18px_rgba(16,185,129,0.35)]'
             : 'border border-amber-400 bg-[#161208] shadow-[0_0_14px_rgba(251,191,36,0.25)] animate-pulse hover:border-amber-300'
         }`}
+        style={tileStyle}
       >
         {/* Real Skill Icon */}
         {slot.icon_png ? (
@@ -44,7 +55,7 @@ const SkillTile: React.FC<SkillTileProps> = ({ slot }) => {
           />
         ) : (
           <div
-            className={`w-full h-full rounded-[6px] flex items-center justify-center font-mono font-bold text-sm ${
+            className={`w-full h-full rounded-[6px] flex items-center justify-center font-mono font-bold text-xs ${
               slot.ok ? 'bg-emerald-950/60 text-emerald-200' : 'bg-amber-950/70 text-amber-200'
             }`}
           >
@@ -54,23 +65,23 @@ const SkillTile: React.FC<SkillTileProps> = ({ slot }) => {
 
         {/* Status Badge in Top-Right Corner */}
         <div
-          className={`absolute top-0.5 right-0.5 z-10 w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-md ${
+          className={`absolute top-0.5 right-0.5 z-10 w-3 h-3 rounded-full flex items-center justify-center shadow-md ${
             slot.ok
               ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.7)]'
               : 'bg-amber-400 text-black shadow-[0_0_8px_rgba(251,191,36,0.8)]'
           }`}
         >
           {slot.ok ? (
-            <Check className="w-2.5 h-2.5 stroke-[3]" />
+            <Check className="w-2 h-2 stroke-[3]" />
           ) : (
-            <span className="font-bold text-[9px] leading-none">!</span>
+            <span className="font-bold text-[8px] leading-none">!</span>
           )}
         </div>
       </div>
 
-      {/* Monospace Key Label Below the Tile */}
+      {/* Monospace Key Label Below the Tile - 11px font */}
       <span
-        className={`mt-1 font-mono text-[11px] font-bold tracking-wider leading-none transition-colors ${
+        className={`mt-1 font-mono text-[11px] font-bold tracking-wider leading-none text-center truncate transition-colors ${
           slot.ok
             ? 'text-zinc-300 group-hover:text-white'
             : 'text-amber-300 group-hover:text-amber-200'
@@ -145,6 +156,33 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
   const bottomGroup1 = bottomSlots.slice(0, 6);
   const bottomGroup2 = bottomSlots.slice(6);
 
+  const bottomRowRef = React.useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const updateWidth = () => {
+      if (bottomRowRef.current) {
+        setContainerWidth(bottomRowRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+    const ro = new ResizeObserver(updateWidth);
+    if (bottomRowRef.current) {
+      ro.observe(bottomRowRef.current);
+    }
+    return () => ro.disconnect();
+  }, [isOpen]);
+
+  // User specification:
+  // width: clamp(28px, (100% - отступы) / 12.5, 56px), квадратная (aspect-ratio: 1).
+  // Разрыв между 6 и 7 — 1/3 ширины плитки. Подписи клавиш — под плиткой, шрифт 11px.
+  // overflow-x: hidden. Проверь на окне шириной 600 px.
+  const gaps = 20;
+  const effectiveWidth = containerWidth > 0 ? containerWidth : 520;
+  const tileSize = Math.max(28, Math.min(56, Math.floor((effectiveWidth - gaps) / 12.5)));
+  const separatorWidth = Math.max(8, Math.round(tileSize / 3));
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150 overflow-hidden"
@@ -217,39 +255,49 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
             )}
           </div>
 
-          {/* In-Game Style Skill Bar Frame */}
-          <div className="w-full bg-[#050608] border border-zinc-800/90 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2.5 shadow-inner overflow-x-auto">
+          {/* In-Game Style Skill Bar Frame - overflow-x: hidden */}
+          <div
+            className="w-full bg-[#050608] border border-zinc-800/90 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2.5 shadow-inner overflow-x-hidden"
+            style={{ overflowX: 'hidden' }}
+          >
             {/* Top Row: Q and C (aligned left) */}
             {topSlots.length > 0 && (
-              <div className="flex items-center gap-2 pb-0.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 pb-0.5">
                 {topSlots.map((slot, idx) => (
-                  <SkillTile key={`top-${slot.key}-${idx}`} slot={slot} />
+                  <SkillTile key={`top-${slot.key}-${idx}`} slot={slot} size={tileSize} />
                 ))}
               </div>
             )}
 
-            {/* Bottom Row: 1 2 3 4 5 6 | 7 8 9 0 - = with gap between 6 and 7 */}
+            {/* Bottom Row: 12 slots (1 2 3 4 5 6 | 7 8 9 0 - =) with 1/3 tile width gap between 6 and 7 */}
             {bottomSlots.length > 0 && (
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-max">
+              <div
+                ref={bottomRowRef}
+                className="w-full flex items-center justify-between overflow-x-hidden select-none"
+                style={{ overflowX: 'hidden' }}
+              >
                 {/* First 6 slots (1 2 3 4 5 6) */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-[2px] sm:gap-1 shrink-0">
                   {bottomGroup1.map((slot, idx) => (
-                    <SkillTile key={`bottom1-${slot.key}-${idx}`} slot={slot} />
+                    <SkillTile key={`bottom1-${slot.key}-${idx}`} slot={slot} size={tileSize} />
                   ))}
                 </div>
 
-                {/* Gap separator like in-game skill bar */}
+                {/* Gap separator: ровно 1/3 ширины плитки */}
                 {bottomGroup2.length > 0 && (
-                  <div className="w-2 sm:w-3 flex items-center justify-center shrink-0">
-                    <div className="w-[1.5px] h-6 bg-zinc-800 rounded-full" />
+                  <div
+                    className="flex items-center justify-center shrink-0"
+                    style={{ width: `${separatorWidth}px` }}
+                  >
+                    <div className="w-[1.5px] h-5 bg-zinc-800 rounded-full" />
                   </div>
                 )}
 
                 {/* Second 6 slots (7 8 9 0 - =) */}
                 {bottomGroup2.length > 0 && (
-                  <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-[2px] sm:gap-1 shrink-0">
                     {bottomGroup2.map((slot, idx) => (
-                      <SkillTile key={`bottom2-${slot.key}-${idx}`} slot={slot} />
+                      <SkillTile key={`bottom2-${slot.key}-${idx}`} slot={slot} size={tileSize} />
                     ))}
                   </div>
                 )}

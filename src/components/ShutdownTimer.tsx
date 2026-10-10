@@ -89,6 +89,43 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
   const minutesInputId = useId();
   const targetTimeInputId = useId();
 
+  // Dynamic positioning for popover to guarantee it never gets cut off on any screen or container
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!isPopoverOpen) return;
+
+    const updatePosition = () => {
+      if (!buttonRef.current) return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      const popoverWidth = 280;
+      const margin = 10;
+      const windowWidth = window.innerWidth;
+
+      // Center horizontally under the clock button
+      let left = rect.left + rect.width / 2 - popoverWidth / 2;
+      // Clamp within viewport edges
+      if (left < margin) {
+        left = margin;
+      } else if (left + popoverWidth > windowWidth - margin) {
+        left = Math.max(margin, windowWidth - margin - popoverWidth);
+      }
+
+      setPopoverPos({
+        top: rect.bottom + 8,
+        left,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isPopoverOpen]);
+
   // Populate or clear fields according to shutdownMode & inputs when popover opens or mode changes
   useEffect(() => {
     if (isPopoverOpen) {
@@ -363,13 +400,18 @@ export const ShutdownTimer: React.FC<ShutdownTimerProps> = ({
         </div>
       </button>
 
-      {/* Popover */}
+      {/* Popover - Adaptive, never cut off on the left or edges */}
       {isPopoverOpen && (
         <div
           ref={popoverRef}
           role="dialog"
           aria-label="Настройка автоостановки бота"
-          className="absolute top-full mt-2 right-0 z-50 w-[280px] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          className="fixed z-50 w-[280px] max-w-[calc(100vw-20px)] bg-[#0c0c10] border border-zinc-700/90 rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.06)] backdrop-blur-md flex flex-col gap-2.5 text-xs text-zinc-300 animate-in fade-in zoom-in-95 duration-150"
+          style={
+            popoverPos
+              ? { top: `${popoverPos.top}px`, left: `${popoverPos.left}px` }
+              : undefined
+          }
         >
           {/* Popover Header */}
           <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
