@@ -57,14 +57,11 @@ function createMockSkillIcon(key: string, hue: number, isDark = false): string {
   }
 }
 
-function createMock14Slots(): CaptureSkillsSlot[] {
-  // 14 slots order:
-  // Top row: q, c
-  // Bottom row: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, -, =
-  // 2 slots with ok: false and status "тёмный: пустой или откат?" (e.g. "5" and "-")
+function createMockSkillSlots(): CaptureSkillsSlot[] {
+  // 12 slots without Q and C:
+  // 1, 2, 3, 4, 5, 6 | 7, 8, 9, 0, -, =
+  // 2 slots with ok: false and status "тёмный: пустой или откат?" ("5" and "-")
   const rawDefinitions = [
-    { key: 'q', row: 'top', hue: 200, ok: true, status: 'ok', brightness: 122 },
-    { key: 'c', row: 'top', hue: 280, ok: true, status: 'ok', brightness: 118 },
     { key: '1', row: 'bottom', hue: 215, ok: true, status: 'ok', brightness: 124 },
     { key: '2', row: 'bottom', hue: 260, ok: true, status: 'ok', brightness: 120 },
     { key: '3', row: 'bottom', hue: 320, ok: true, status: 'ok', brightness: 115 },
@@ -414,7 +411,45 @@ export const ComboSequence: React.FC<Props> = ({
 
     try {
       if (typeof window !== 'undefined' && window.pywebview?.api?.capture_skills) {
-        const res = await window.pywebview.api.capture_skills();
+        const rawRes = await window.pywebview.api.capture_skills();
+        let res: any = rawRes;
+        if (typeof rawRes === 'string') {
+          try {
+            res = JSON.parse(rawRes);
+          } catch (e) {
+            console.warn('capture_skills: JSON parse failed', e);
+          }
+        }
+
+        // Defensive normalization of response object
+        if (!res || typeof res !== 'object') {
+          res = { ok: false, message: 'Не удалось распознать ответ съемки скиллов' };
+        }
+
+        // Normalize slots array (safeguard keys as string, boolean ok, etc.)
+        if (Array.isArray(res.slots)) {
+          res.slots = res.slots.map((s: any) => ({
+            key: s?.key != null ? String(s.key) : '',
+            row: s?.row || 'bottom',
+            icon_png: s?.icon_png || '',
+            brightness: typeof s?.brightness === 'number' ? s.brightness : 100,
+            ok: Boolean(s?.ok),
+            status: s?.status || (s?.ok ? 'ok' : 'проверь'),
+          }));
+        } else {
+          res.slots = [];
+        }
+
+        // Force viewport repaint in pywebview/WebView2 upon window restore to eliminate black screen
+        if (typeof window !== 'undefined') {
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+          });
+          setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+          }, 80);
+        }
+
         setCaptureResult(res);
         setIsCaptureModalOpen(true);
 
@@ -455,7 +490,7 @@ export const ComboSequence: React.FC<Props> = ({
           ok: true,
           message: 'Снимки сохранены',
           preview_png: null,
-          slots: createMock14Slots(),
+          slots: createMockSkillSlots(),
         };
         setCaptureResult(mockRes);
         setIsCaptureModalOpen(true);

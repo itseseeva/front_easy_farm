@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CaptureSkillsResponse, CaptureSkillsSlot } from '../types';
-import { Check, AlertTriangle, RefreshCw, X, Camera } from 'lucide-react';
+import { Check, RefreshCw, X, Camera } from 'lucide-react';
 
 interface CaptureSkillsModalProps {
   isOpen: boolean;
@@ -12,51 +12,48 @@ interface CaptureSkillsModalProps {
 
 interface SkillTileProps {
   slot: CaptureSkillsSlot;
-  size?: number;
 }
 
-const SkillTile: React.FC<SkillTileProps> = ({ slot, size }) => {
+const SkillTile: React.FC<SkillTileProps> = ({ slot }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const displayKey = slot.key.toUpperCase();
-  const tooltipText = `Клавиша ${displayKey} · яркость ${slot.brightness} · ${slot.status}`;
-
-  const tileStyle: React.CSSProperties = size
-    ? { width: `${size}px`, height: `${size}px`, aspectRatio: '1 / 1' }
-    : { width: 'var(--tile-size, 40px)', height: 'var(--tile-size, 40px)', aspectRatio: '1 / 1' };
-
-  const wrapperStyle: React.CSSProperties = size
-    ? { width: `${size}px` }
-    : { width: 'var(--tile-size, 40px)' };
+  const rawKey = slot?.key != null ? String(slot.key) : '';
+  const displayKey = rawKey.toUpperCase();
+  const brightness = slot?.brightness != null ? slot.brightness : '—';
+  const status = slot?.status || (slot?.ok ? 'ok' : 'проверь');
+  const tooltipText = `Клавиша ${displayKey || '?'} · яркость ${brightness} · ${status}`;
+  const isOk = Boolean(slot?.ok);
 
   return (
     <div
-      className="relative flex flex-col items-center select-none group shrink-0"
-      style={wrapperStyle}
+      className="relative flex flex-col items-center select-none group w-full"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Square Tile */}
+      {/* Square Tile: responsive aspect-ratio 1:1, max 44px, min 26px */}
       <div
-        className={`rounded-lg p-0.5 relative flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
-          slot.ok
-            ? 'border border-emerald-500/80 bg-[#090d0b] shadow-[0_0_12px_rgba(16,185,129,0.18)] hover:border-emerald-400 hover:shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-            : 'border border-amber-400 bg-[#161208] shadow-[0_0_14px_rgba(251,191,36,0.25)] animate-pulse hover:border-amber-300'
+        className={`w-full aspect-square max-w-[44px] rounded-lg p-0.5 relative flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
+          isOk
+            ? 'border border-emerald-500/80 bg-[#090d0b] shadow-[0_0_10px_rgba(16,185,129,0.18)] hover:border-emerald-400 hover:shadow-[0_0_16px_rgba(16,185,129,0.35)]'
+            : 'border border-amber-400 bg-[#161208] shadow-[0_0_12px_rgba(251,191,36,0.25)] animate-pulse hover:border-amber-300'
         }`}
-        style={tileStyle}
       >
         {/* Real Skill Icon */}
-        {slot.icon_png ? (
+        {slot?.icon_png ? (
           <img
             src={slot.icon_png}
             alt={`Слот ${displayKey}`}
             className="w-full h-full object-cover rounded-[6px]"
             style={{ imageRendering: 'pixelated' }}
+            onError={(e) => {
+              // Hide broken image and fall back to key text
+              (e.target as HTMLElement).style.display = 'none';
+            }}
           />
         ) : (
           <div
             className={`w-full h-full rounded-[6px] flex items-center justify-center font-mono font-bold text-xs ${
-              slot.ok ? 'bg-emerald-950/60 text-emerald-200' : 'bg-amber-950/70 text-amber-200'
+              isOk ? 'bg-emerald-950/60 text-emerald-200' : 'bg-amber-950/70 text-amber-200'
             }`}
           >
             {displayKey}
@@ -66,12 +63,12 @@ const SkillTile: React.FC<SkillTileProps> = ({ slot, size }) => {
         {/* Status Badge in Top-Right Corner */}
         <div
           className={`absolute top-0.5 right-0.5 z-10 w-3 h-3 rounded-full flex items-center justify-center shadow-md ${
-            slot.ok
+            isOk
               ? 'bg-emerald-500 text-black shadow-[0_0_8px_rgba(16,185,129,0.7)]'
               : 'bg-amber-400 text-black shadow-[0_0_8px_rgba(251,191,36,0.8)]'
           }`}
         >
-          {slot.ok ? (
+          {isOk ? (
             <Check className="w-2 h-2 stroke-[3]" />
           ) : (
             <span className="font-bold text-[8px] leading-none">!</span>
@@ -81,8 +78,8 @@ const SkillTile: React.FC<SkillTileProps> = ({ slot, size }) => {
 
       {/* Monospace Key Label Below the Tile - 11px font */}
       <span
-        className={`mt-1 font-mono text-[11px] font-bold tracking-wider leading-none text-center truncate transition-colors ${
-          slot.ok
+        className={`mt-1 font-mono text-[11px] font-bold tracking-wider leading-none text-center truncate w-full transition-colors ${
+          isOk
             ? 'text-zinc-300 group-hover:text-white'
             : 'text-amber-300 group-hover:text-amber-200'
         }`}
@@ -96,7 +93,7 @@ const SkillTile: React.FC<SkillTileProps> = ({ slot, size }) => {
           <div className="px-2.5 py-1.5 rounded-lg bg-[#0c0d12]/98 border border-zinc-700 text-zinc-100 shadow-[0_8px_25px_rgba(0,0,0,0.95),0_0_12px_rgba(255,255,255,0.1)] backdrop-blur-md flex items-center gap-1.5 text-xs">
             <span
               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                slot.ok ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'
+                isOk ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'
               }`}
             />
             <span className="font-mono text-[11.5px] leading-none">{tooltipText}</span>
@@ -130,58 +127,22 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
 
   if (!isOpen || !result) return null;
 
-  const slots = result.slots || [];
-  const totalSlots = slots.length;
-  const okSlotsCount = slots.filter((s) => s.ok).length;
+  // Filter out Q and C as requested by user ("q c можно убрать нам эти кнпоки не важны")
+  const rawSlots = Array.isArray(result.slots) ? result.slots : [];
+  const visibleSlots = rawSlots.filter((s) => {
+    const k = String(s?.key ?? '').toLowerCase();
+    return k !== 'q' && k !== 'c';
+  });
+
+  const totalSlots = visibleSlots.length;
+  const okSlotsCount = visibleSlots.filter((s) => Boolean(s?.ok)).length;
   const issueSlotsCount = totalSlots - okSlotsCount;
-  const allOk = totalSlots > 0 && issueSlotsCount === 0;
+  const isOkResult = Boolean(result.ok);
+  const allOk = isOkResult && totalSlots > 0 && issueSlotsCount === 0;
 
-  // Separate slots into game-style rows:
-  // Top row: Q, C
-  // Bottom row: 1..6 and 7..= (with gap between 6 and 7)
-  let topSlots = slots.filter(
-    (s) => s.row === 'top' || ['q', 'c', 'Q', 'C'].includes(s.key)
-  );
-  let bottomSlots = slots.filter(
-    (s) => s.row === 'bottom' || !['q', 'c', 'Q', 'C'].includes(s.key)
-  );
-
-  // Fallback if rows are not specified or differently ordered
-  if (topSlots.length === 0 && bottomSlots.length === 0 && slots.length > 0) {
-    topSlots = slots.slice(0, 2);
-    bottomSlots = slots.slice(2);
-  }
-
-  // Split bottom row into 1..6 and 7..= for the in-game gap
-  const bottomGroup1 = bottomSlots.slice(0, 6);
-  const bottomGroup2 = bottomSlots.slice(6);
-
-  const bottomRowRef = React.useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(0);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const updateWidth = () => {
-      if (bottomRowRef.current) {
-        setContainerWidth(bottomRowRef.current.clientWidth);
-      }
-    };
-    updateWidth();
-    const ro = new ResizeObserver(updateWidth);
-    if (bottomRowRef.current) {
-      ro.observe(bottomRowRef.current);
-    }
-    return () => ro.disconnect();
-  }, [isOpen]);
-
-  // User specification:
-  // width: clamp(28px, (100% - отступы) / 12.5, 56px), квадратная (aspect-ratio: 1).
-  // Разрыв между 6 и 7 — 1/3 ширины плитки. Подписи клавиш — под плиткой, шрифт 11px.
-  // overflow-x: hidden. Проверь на окне шириной 600 px.
-  const gaps = 20;
-  const effectiveWidth = containerWidth > 0 ? containerWidth : 520;
-  const tileSize = Math.max(28, Math.min(56, Math.floor((effectiveWidth - gaps) / 12.5)));
-  const separatorWidth = Math.max(8, Math.round(tileSize / 3));
+  // Split the 12 slots into group 1 (1..6) and group 2 (7..=) with gap between 6 and 7
+  const group1 = visibleSlots.slice(0, 6);
+  const group2 = visibleSlots.slice(6, 12);
 
   return (
     <div
@@ -205,7 +166,7 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
                 Снимки скиллов
               </h2>
               <span className="text-[10px] sm:text-[10.5px] text-zinc-400 block truncate">
-                {result.message || (result.ok ? 'Снимки сохранены' : 'Ошибка при съемке')}
+                {result.message || (isOkResult ? 'Снимки сохранены' : 'Ошибка при съемке')}
               </span>
             </div>
           </div>
@@ -221,9 +182,9 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Content Area */}
+        {/* Content Area */}
         <div className="flex-1 min-h-0 overflow-y-auto py-2.5 sm:py-3 flex flex-col gap-2.5 sm:gap-3 pr-0.5">
-          {/* Summary Line: «Снято 14 из 14» (зелёным) или «12 в порядке, 2 проверь» (жёлтым) + подсказка */}
+          {/* Summary Line: «Снято 12 из 12» (зелёным) или «10 в порядке, 2 проверь» (жёлтым) + подсказка */}
           <div
             className={`rounded-xl px-3 py-2 border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 shrink-0 ${
               allOk
@@ -234,7 +195,9 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
             <div className="flex items-center gap-2">
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
-                  allOk ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+                  allOk
+                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
+                    : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
                 }`}
               />
               <span
@@ -255,52 +218,42 @@ export const CaptureSkillsModal: React.FC<CaptureSkillsModalProps> = ({
             )}
           </div>
 
-          {/* In-Game Style Skill Bar Frame - overflow-x: hidden */}
+          {/* In-Game Style Skill Bar Frame - 12 slots in one beautiful row */}
           <div
-            className="w-full bg-[#050608] border border-zinc-800/90 rounded-xl p-2.5 sm:p-3 flex flex-col gap-2.5 shadow-inner overflow-x-hidden"
-            style={{ overflowX: 'hidden' }}
+            className="w-full bg-[#050608] border border-zinc-800/90 rounded-xl py-3 px-2 sm:px-3 flex flex-col items-center justify-center shadow-inner overflow-hidden"
           >
-            {/* Top Row: Q and C (aligned left) */}
-            {topSlots.length > 0 && (
-              <div className="flex items-center gap-1 sm:gap-1.5 pb-0.5">
-                {topSlots.map((slot, idx) => (
-                  <SkillTile key={`top-${slot.key}-${idx}`} slot={slot} size={tileSize} />
-                ))}
-              </div>
-            )}
+            {visibleSlots.length > 0 ? (
+              <div className="w-full flex items-center justify-center overflow-hidden select-none">
+                <div
+                  className="grid items-center justify-center gap-1 sm:gap-1.5 w-full max-w-[500px]"
+                  style={{
+                    gridTemplateColumns:
+                      group2.length > 0
+                        ? 'repeat(6, minmax(0, 1fr)) 12px repeat(6, minmax(0, 1fr))'
+                        : `repeat(${visibleSlots.length}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {/* First 6 slots (1 2 3 4 5 6) */}
+                  {group1.map((slot, idx) => (
+                    <SkillTile key={`slot-g1-${slot.key}-${idx}`} slot={slot} />
+                  ))}
 
-            {/* Bottom Row: 12 slots (1 2 3 4 5 6 | 7 8 9 0 - =) with 1/3 tile width gap between 6 and 7 */}
-            {bottomSlots.length > 0 && (
-              <div
-                ref={bottomRowRef}
-                className="w-full flex items-center justify-between overflow-x-hidden select-none"
-                style={{ overflowX: 'hidden' }}
-              >
-                {/* First 6 slots (1 2 3 4 5 6) */}
-                <div className="flex items-center gap-[2px] sm:gap-1 shrink-0">
-                  {bottomGroup1.map((slot, idx) => (
-                    <SkillTile key={`bottom1-${slot.key}-${idx}`} slot={slot} size={tileSize} />
+                  {/* Visual separation gap between 6 and 7 (like in game) */}
+                  {group2.length > 0 && (
+                    <div className="flex items-center justify-center h-full select-none pointer-events-none">
+                      <div className="w-[1.5px] h-5 bg-zinc-800/80 rounded-full" />
+                    </div>
+                  )}
+
+                  {/* Second 6 slots (7 8 9 0 - =) */}
+                  {group2.map((slot, idx) => (
+                    <SkillTile key={`slot-g2-${slot.key}-${idx}`} slot={slot} />
                   ))}
                 </div>
-
-                {/* Gap separator: ровно 1/3 ширины плитки */}
-                {bottomGroup2.length > 0 && (
-                  <div
-                    className="flex items-center justify-center shrink-0"
-                    style={{ width: `${separatorWidth}px` }}
-                  >
-                    <div className="w-[1.5px] h-5 bg-zinc-800 rounded-full" />
-                  </div>
-                )}
-
-                {/* Second 6 slots (7 8 9 0 - =) */}
-                {bottomGroup2.length > 0 && (
-                  <div className="flex items-center gap-[2px] sm:gap-1 shrink-0">
-                    {bottomGroup2.map((slot, idx) => (
-                      <SkillTile key={`bottom2-${slot.key}-${idx}`} slot={slot} size={tileSize} />
-                    ))}
-                  </div>
-                )}
+              </div>
+            ) : (
+              <div className="py-6 px-3 text-center text-xs text-zinc-400">
+                {result.message || 'Снимки скиллов не найдены. Нажмите «Снять ещё раз».'}
               </div>
             )}
           </div>
