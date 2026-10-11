@@ -121,12 +121,14 @@ export const ComboSequence: React.FC<Props> = ({
     key: string;
     actionType: string;
     castTimeSeconds: number;
+    repeatCount: number;
     independent: boolean;
     skillCooldownSeconds: number;
   }>({
     key: '',
     actionType: 'press',
     castTimeSeconds: 0,
+    repeatCount: 1,
     independent: false,
     skillCooldownSeconds: 0,
   });
@@ -228,6 +230,7 @@ export const ComboSequence: React.FC<Props> = ({
         key: editingStepData.key || '',
         actionType: editingStepData.actionType || 'press',
         castTimeSeconds: editingStepData.castTimeSeconds ?? 0,
+        repeatCount: editingStepData.repeatCount ?? 1,
         independent: Boolean(editingStepData.independent),
         skillCooldownSeconds: cd,
       });
@@ -254,6 +257,7 @@ export const ComboSequence: React.FC<Props> = ({
       key: draftStep.key.toUpperCase(),
       actionType: draftStep.actionType,
       castTimeSeconds: draftStep.castTimeSeconds,
+      repeatCount: Math.min(10, Math.max(1, draftStep.repeatCount ?? 1)),
       independent: draftStep.independent,
       skillCooldownSeconds: cd,
       cooldown: cd,
@@ -528,6 +532,16 @@ export const ComboSequence: React.FC<Props> = ({
                         ⏱
                       </button>
                     )}
+
+                    {/* Repeat Count Badge - Bottom Right Corner */}
+                    {step.repeatCount && step.repeatCount > 1 && (
+                      <span
+                        title={`Нажимать ${step.repeatCount} раз(а) подряд`}
+                        className="absolute bottom-0.5 right-1 z-20 font-mono text-[7.5px] font-bold text-amber-300 bg-[#120e06] px-1 py-0.2 rounded border border-amber-500/60 shadow-[0_0_6px_rgba(245,158,11,0.3)] select-none pointer-events-none"
+                      >
+                        {step.repeatCount}×
+                      </span>
+                    )}
                   </div>
                 </React.Fragment>
               );
@@ -608,6 +622,35 @@ export const ComboSequence: React.FC<Props> = ({
                 }}
                 className="w-14 bg-[#12131b] text-zinc-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border border-zinc-700/80 outline-none text-center focus:border-zinc-400"
               />
+            </div>
+
+            {/* Сколько раз нажимать скилл подряд */}
+            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
+              <div className="flex flex-col">
+                <label className="text-[10px] text-zinc-300 font-medium">
+                  Нажатий подряд
+                </label>
+                <span className="text-[8.5px] text-zinc-500">
+                  Сколько раз нажимать подряд
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => setDraftStep(prev => ({ ...prev, repeatCount: cnt }))}
+                    className={`w-6 h-6 rounded-md font-mono text-[10px] font-bold transition cursor-pointer flex items-center justify-center border ${
+                      (draftStep.repeatCount || 1) === cnt
+                        ? 'bg-amber-600/90 text-white border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                        : 'bg-[#12131b] text-zinc-400 hover:text-white border-zinc-800 hover:bg-zinc-800'
+                    }`}
+                    title={`Нажимать ${cnt} раз(а) подряд`}
+                  >
+                    {cnt}×
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Тип скилла: Обычный (в очереди) / Постоянно (по своему КД) */}
