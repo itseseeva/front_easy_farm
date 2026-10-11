@@ -222,12 +222,10 @@ export const App: React.FC = () => {
           if (s.actionType) {
             stepData.actionType = s.actionType;
           }
-          if (s.independent) {
-            stepData.independent = true;
-            stepData.skillCooldownSeconds = s.skillCooldownSeconds ?? 6;
-          } else {
-            stepData.independent = false;
-          }
+          const skillCd = typeof s.skillCooldownSeconds === 'number' ? s.skillCooldownSeconds : (typeof s.cooldown === 'number' ? s.cooldown : 0);
+          stepData.skillCooldownSeconds = skillCd;
+          stepData.cooldown = skillCd;
+          stepData.independent = Boolean(s.independent);
           return stepData;
         })
       }))
