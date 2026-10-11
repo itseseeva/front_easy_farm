@@ -17,6 +17,34 @@ interface Props {
 
 const MAX_CAST_SECONDS = 5;
 
+// Extract clean physical game key name from KeyboardEvent (no text caret, no layout mismatch)
+const getPhysicalKeyFromEvent = (e: React.KeyboardEvent): string | null => {
+  if (e.key === 'Escape') return null;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return null;
+  if (e.key === 'Backspace' || e.key === 'Delete') return '';
+
+  if (e.key === 'Tab') return 'TAB';
+  if (/^F([1-9]|1[0-2])$/i.test(e.key)) {
+    return e.key.toUpperCase();
+  }
+
+  let keyStr = e.key.toUpperCase();
+  if (e.code.startsWith('Key')) {
+    keyStr = e.code.replace('Key', '');
+  } else if (e.code.startsWith('Digit')) {
+    keyStr = e.code.replace('Digit', '');
+  } else if (e.code.startsWith('Numpad')) {
+    keyStr = 'NUM' + e.code.replace('Numpad', '');
+  } else if (e.key === ' ' || e.code === 'Space') {
+    keyStr = 'SPACE';
+  } else if (e.key === 'ArrowUp') keyStr = 'UP';
+  else if (e.key === 'ArrowDown') keyStr = 'DOWN';
+  else if (e.key === 'ArrowLeft') keyStr = 'LEFT';
+  else if (e.key === 'ArrowRight') keyStr = 'RIGHT';
+
+  return keyStr.slice(0, 5);
+};
+
 // Mock generators for preview mode or initial state
 const createMockSkillIcon = (hue: number, label: string): string => {
   if (typeof document === 'undefined') return '';
@@ -115,6 +143,12 @@ export const ComboSequence: React.FC<Props> = ({
 
   // Active step being configured in modal
   const [editingStep, setEditingStep] = useState<{ chainId: string; stepId: string } | null>(null);
+
+  // Active step key listening on the combo bar tile (no text caret, instant key press)
+  const [activeCapturingStepId, setActiveCapturingStepId] = useState<string | null>(null);
+
+  // Active key listening in the step editor modal (no text caret, instant key press)
+  const [isModalKeyCapturing, setIsModalKeyCapturing] = useState<boolean>(false);
 
   // Draft step state for modal editing
   const [draftStep, setDraftStep] = useState<{
@@ -237,17 +271,21 @@ export const ComboSequence: React.FC<Props> = ({
     }
   }, [editingStep?.chainId, editingStep?.stepId]);
 
-  // Close modal on Escape key
+  // Close modal on Escape key (or cancel key capture if active)
   useEffect(() => {
     if (!editingStep) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isModalKeyCapturing) {
+          setIsModalKeyCapturing(false);
+          return;
+        }
         setEditingStep(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingStep]);
+  }, [editingStep, isModalKeyCapturing]);
 
   // Commit changes from draft to active chain
   const handleSaveStep = () => {
@@ -480,17 +518,49 @@ export const ComboSequence: React.FC<Props> = ({
                       </button>
                     )}
 
-                    {/* Editable Key Input inside the square */}
-                    <input
-                      type="text"
-                      maxLength={5}
-                      value={step.key || ''}
-                      placeholder="+"
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleUpdateStepKey(currentChain.id, step.id, e.target.value)}
-                      className="w-full text-center bg-transparent font-mono font-bold text-xs uppercase text-zinc-100 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] placeholder-zinc-700 outline-none cursor-text transition-colors tracking-wide py-0.5"
-                      title="Впишите сюда клавишу (например: 1, 2, Q, E, R, F). Клик по плитке открывает редактор"
-                    />
+                    {/* Key Input inside the square: No blinking caret, instant key press */}
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCapturingStepId(step.id);
+                      }}
+                      onBlur={() => {
+                        if (activeCapturingStepId === step.id) {
+                          setActiveCapturingStepId(null);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setActiveCapturingStepId(null);
+                          e.currentTarget.blur();
+                          return;
+                        }
+                        const captured = getPhysicalKeyFromEvent(e);
+                        if (captured !== null) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleUpdateStepKey(currentChain.id, step.id, captured);
+                          setActiveCapturingStepId(null);
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className={`w-full text-center font-mono font-black text-xs uppercase transition-all tracking-wide py-0.5 select-none cursor-pointer caret-transparent outline-none rounded ${
+                        activeCapturingStepId === step.id
+                          ? 'bg-blue-600/30 text-blue-200 ring-1 ring-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse'
+                          : step.key
+                          ? 'text-zinc-100 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]'
+                          : 'text-zinc-600 group-hover:text-zinc-400'
+                      }`}
+                      title="Кликните и нажмите любую клавишу — старая клавиша сразу заменится. Клик по плитке открывает редактор"
+                    >
+                      {activeCapturingStepId === step.id ? (
+                        <span className="text-[9.5px] text-blue-300 font-sans tracking-tight">Жми...</span>
+                      ) : (
+                        step.key || '+'
+                      )}
+                    </button>
 
                     {/* Skill CD / Permanent badge - Bottom Left Corner */}
                     {isIndependent ? (
@@ -559,233 +629,347 @@ export const ComboSequence: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Step Settings Modal: Compact & Adaptive «Редактор шага» */}
+      {/* Step Settings Modal: Horizontal & Ergonomic «Редактор шага» */}
       {editingStep && editingStepData && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setEditingStep(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => {
+            setEditingStep(null);
+            setIsModalKeyCapturing(false);
+          }}
         >
           <div
-            className="w-full max-w-[280px] sm:max-w-[300px] max-h-[min(520px,90vh)] overflow-y-auto bg-[#0a0b10] border border-zinc-700/80 rounded-xl p-3 shadow-[0_16px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(255,255,255,0.05)] flex flex-col gap-2 text-zinc-200 select-none"
+            className="w-full max-w-[560px] sm:max-w-[620px] bg-[#090a10] border border-zinc-700/80 rounded-2xl p-3 sm:p-3.5 shadow-[0_24px_60px_rgba(0,0,0,0.95),0_0_30px_rgba(255,255,255,0.06)] flex flex-col gap-2.5 text-zinc-200 select-none animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
+            {/* Modal Header (Horizontal) */}
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0"></span>
-                <span className="font-semibold text-[11px] text-white truncate">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-zinc-300 shadow-[0_0_8px_rgba(255,255,255,0.5)] shrink-0"></span>
+                <span className="font-semibold text-xs sm:text-[13px] text-white tracking-wide truncate">
                   Редактор шага #{editingStepIndex + 1}
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-100 font-mono font-bold text-[9.5px] border border-zinc-700/80 shrink-0">
-                  [{draftStep.key || '—'}]
+                <span className="text-[10px] text-zinc-500 hidden sm:inline">
+                  • Настройка клавиши, каста и КД
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingStep(null)}
-                className="text-zinc-500 hover:text-white p-0.5 rounded transition text-xs cursor-pointer shrink-0"
-                title="Закрыть"
+                className="text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition text-xs cursor-pointer shrink-0 leading-none"
+                title="Закрыть (Esc)"
               >
                 ✕
               </button>
             </div>
 
-            {/* Тип действия */}
-            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
-              <label className="text-[10px] text-zinc-400 font-medium shrink-0">
-                Тип действия
-              </label>
-              <select
-                value={draftStep.actionType}
-                onChange={(e) => setDraftStep(prev => ({ ...prev, actionType: e.target.value }))}
-                className="bg-[#12131b] text-zinc-200 text-[10.5px] px-2 py-1 rounded-md border border-zinc-700/80 outline-none cursor-pointer focus:border-zinc-400 max-w-[150px] truncate"
-              >
-                <option value="press">Нажатие клавиши</option>
-                <option value="hold">Зажатие клавиши</option>
-              </select>
-            </div>
+            {/* Horizontal 2-Column Content Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* LEFT COLUMN: Клавиша, Действие, Каст, Повторы */}
+              <div className="flex flex-col gap-2">
+                {/* 1. Клавиша скилла (Hotkey Recorder: без мигающего курсора, просто нажать клавишу) */}
+                <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-xl border border-zinc-800/80">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] font-semibold text-zinc-200">Клавиша шага</span>
+                    <span className="text-[8.5px] text-zinc-500 truncate">
+                      {isModalKeyCapturing ? '⚡ Нажмите клавишу...' : 'Без курсора, жмите кнопку'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      tabIndex={0}
+                      onClick={() => setIsModalKeyCapturing(true)}
+                      onBlur={() => setIsModalKeyCapturing(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setIsModalKeyCapturing(false);
+                          e.currentTarget.blur();
+                          return;
+                        }
+                        const captured = getPhysicalKeyFromEvent(e);
+                        if (captured !== null) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDraftStep(prev => ({ ...prev, key: captured }));
+                          setIsModalKeyCapturing(false);
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className={`min-w-[64px] h-7 px-2.5 rounded-lg font-mono font-black text-xs uppercase flex items-center justify-center gap-1 border transition cursor-pointer select-none caret-transparent outline-none ${
+                        isModalKeyCapturing
+                          ? 'bg-blue-600/30 text-blue-200 border-blue-400 ring-2 ring-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.6)] animate-pulse'
+                          : draftStep.key
+                          ? 'bg-[#14151f] text-white border-zinc-600 hover:border-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.12)] hover:bg-[#1a1b28]'
+                          : 'bg-[#101117] text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+                      }`}
+                      title="Кликните и нажмите нужную клавишу на клавиатуре (заменит текущую)"
+                    >
+                      {isModalKeyCapturing ? (
+                        <span className="text-[10px] text-blue-300 font-bold animate-pulse font-sans">Жми...</span>
+                      ) : draftStep.key ? (
+                        <span className="tracking-wider">[{draftStep.key}]</span>
+                      ) : (
+                        <span className="text-zinc-500 font-normal">[ + ]</span>
+                      )}
+                    </button>
+                    {draftStep.key && (
+                      <button
+                        type="button"
+                        onClick={() => setDraftStep(prev => ({ ...prev, key: '' }))}
+                        className="w-5 h-5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] flex items-center justify-center transition cursor-pointer"
+                        title="Очистить клавишу"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-            {/* Время каста (сек) */}
-            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
-              <label className="text-[10px] text-zinc-400 font-medium shrink-0">
-                Время каста (сек)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="5"
-                step="1"
-                value={draftStep.castTimeSeconds}
-                onChange={(e) => {
-                  const val = Math.min(5, Math.max(0, parseInt(e.target.value) || 0));
-                  setDraftStep(prev => ({ ...prev, castTimeSeconds: val }));
-                }}
-                className="w-14 bg-[#12131b] text-zinc-100 font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border border-zinc-700/80 outline-none text-center focus:border-zinc-400"
-              />
-            </div>
+                {/* 2. Тип действия */}
+                <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-xl border border-zinc-800/80">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-zinc-300 font-medium">Тип действия</label>
+                    <span className="text-[8.5px] text-zinc-500">Режим кнопки</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-[#0e0f17] border border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setDraftStep(prev => ({ ...prev, actionType: 'press' }))}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                        draftStep.actionType === 'press'
+                          ? 'bg-zinc-800 text-white border border-zinc-600 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      Нажатие
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraftStep(prev => ({ ...prev, actionType: 'hold' }))}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition cursor-pointer ${
+                        draftStep.actionType === 'hold'
+                          ? 'bg-zinc-800 text-white border border-zinc-600 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      Зажатие
+                    </button>
+                  </div>
+                </div>
 
-            {/* Сколько раз нажимать скилл подряд */}
-            <div className="flex items-center justify-between gap-2 bg-[#06070a]/90 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
-              <div className="flex flex-col">
-                <label className="text-[10px] text-zinc-300 font-medium">
-                  Нажатий подряд
-                </label>
-                <span className="text-[8.5px] text-zinc-500">
-                  Сколько раз нажимать подряд
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((cnt) => (
-                  <button
-                    key={cnt}
-                    type="button"
-                    onClick={() => setDraftStep(prev => ({ ...prev, repeatCount: cnt }))}
-                    className={`w-6 h-6 rounded-md font-mono text-[10px] font-bold transition cursor-pointer flex items-center justify-center border ${
-                      (draftStep.repeatCount || 1) === cnt
-                        ? 'bg-amber-600/90 text-white border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
-                        : 'bg-[#12131b] text-zinc-400 hover:text-white border-zinc-800 hover:bg-zinc-800'
-                    }`}
-                    title={`Нажимать ${cnt} раз(а) подряд`}
-                  >
-                    {cnt}×
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* 3. Горизонтальная сетка: Время каста и Нажатий подряд */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Время каста */}
+                  <div className="flex flex-col gap-1 bg-[#06070a]/90 p-2 rounded-xl border border-zinc-800/80">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9.5px] text-zinc-300 font-medium">Каст</label>
+                      <div className="flex items-center gap-0.5 bg-[#12131b] px-1.5 py-0.2 rounded border border-zinc-700/80">
+                        <input
+                          type="number"
+                          min="0"
+                          max="5"
+                          step="1"
+                          value={draftStep.castTimeSeconds}
+                          onChange={(e) => {
+                            const val = Math.min(5, Math.max(0, parseInt(e.target.value) || 0));
+                            setDraftStep(prev => ({ ...prev, castTimeSeconds: val }));
+                          }}
+                          className="w-5 bg-transparent text-center font-mono font-bold text-[10.5px] text-zinc-100 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="text-[8px] text-zinc-500 font-mono">с</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-0.5 pt-0.5">
+                      {[0, 1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setDraftStep(prev => ({ ...prev, castTimeSeconds: s }))}
+                          className={`flex-1 h-5 rounded text-[8.5px] font-mono font-bold transition cursor-pointer border flex items-center justify-center ${
+                            draftStep.castTimeSeconds === s
+                              ? 'bg-[#1e1e28] text-white border-zinc-400 shadow-[0_0_6px_rgba(255,255,255,0.2)]'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-            {/* Тип скилла: Обычный (в очереди) / Постоянно (по своему КД) */}
-            <div className="flex flex-col gap-1.5 bg-[#06070a]/90 p-2 rounded-lg border border-zinc-800/80">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] text-zinc-400 font-medium">
-                  Тип запуска скилла
-                </label>
-                {draftStep.independent ? (
-                  <span className="text-[9px] font-bold text-blue-400 bg-blue-950/80 px-1.5 py-0.2 rounded border border-blue-500/60 shadow-[0_0_6px_rgba(59,130,246,0.2)]">
-                    Постоянно по КД
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-zinc-500 bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800">
-                    По очереди
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5 p-0.5 rounded-lg bg-[#0e0f17] border border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setDraftStep(prev => ({ ...prev, independent: false }))}
-                  className={`py-1 px-2 rounded-md text-[10.5px] font-semibold transition cursor-pointer flex items-center justify-center gap-1 ${
-                    !draftStep.independent
-                      ? 'bg-zinc-800 text-white border border-zinc-600 shadow-[0_0_10px_rgba(255,255,255,0.12)]'
-                      : 'text-zinc-400 hover:text-zinc-200 border border-transparent hover:bg-zinc-800/40'
-                  }`}
-                >
-                  <span>Обычный</span>
-                  <span className="text-[8.5px] opacity-70 font-normal">(в очереди)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDraftStep(prev => ({
-                    ...prev,
-                    independent: true,
-                    skillCooldownSeconds: (!prev.skillCooldownSeconds || prev.skillCooldownSeconds === 0) ? 6 : prev.skillCooldownSeconds,
-                  }))}
-                  className={`py-1 px-2 rounded-md text-[10.5px] font-semibold transition cursor-pointer flex items-center justify-center gap-1 ${
-                    draftStep.independent
-                      ? 'bg-blue-600 text-white border border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.45)]'
-                      : 'text-zinc-400 hover:text-blue-300 border border-transparent hover:bg-blue-950/30'
-                  }`}
-                >
-                  <span>⚡ Постоянно</span>
-                  <span className="text-[8.5px] opacity-80 font-normal">(по КД)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* КД скилла (сек) */}
-            <div className={`flex flex-col gap-1.5 p-2.5 rounded-lg border transition-all ${
-              draftStep.independent
-                ? 'bg-[#0a0f1d] border-blue-500/60 shadow-[inset_0_0_12px_rgba(59,130,246,0.06)]'
-                : 'bg-[#06070a]/90 border-zinc-700/80 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]'
-            }`}>
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-[10px] text-zinc-200 font-semibold shrink-0 flex items-center gap-1.5">
-                  <Clock className={`w-3.5 h-3.5 ${draftStep.independent ? 'text-blue-400' : 'text-zinc-400'}`} />
-                  <span>КД скилла (сек)</span>
-                </label>
-                <div className="flex items-center gap-1 bg-[#12131b] px-2 py-0.5 rounded-md border border-zinc-700/80 focus-within:border-zinc-400">
-                  <input
-                    type="number"
-                    min="0"
-                    max="300"
-                    step="1"
-                    value={draftStep.skillCooldownSeconds}
-                    onChange={(e) => {
-                      const val = Math.max(0, parseInt(e.target.value) || 0);
-                      setDraftStep(prev => ({ ...prev, skillCooldownSeconds: val }));
-                    }}
-                    className={`w-12 bg-transparent text-center font-mono font-bold text-[11px] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                      draftStep.independent ? 'text-blue-200 font-black' : 'text-zinc-100'
-                    }`}
-                  />
-                  <span className="text-[9.5px] text-zinc-400 font-mono">сек</span>
+                  {/* Нажатий подряд */}
+                  <div className="flex flex-col gap-1 bg-[#06070a]/90 p-2 rounded-xl border border-zinc-800/80">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9.5px] text-zinc-300 font-medium">Подряд</label>
+                      <span className="text-[8.5px] font-mono font-bold text-amber-400 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-600/40">
+                        {draftStep.repeatCount || 1}×
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-0.5 pt-0.5">
+                      {[1, 2, 3, 4, 5].map((cnt) => (
+                        <button
+                          key={cnt}
+                          type="button"
+                          onClick={() => setDraftStep(prev => ({ ...prev, repeatCount: cnt }))}
+                          className={`flex-1 h-5 rounded font-mono text-[9px] font-bold transition cursor-pointer flex items-center justify-center border ${
+                            (draftStep.repeatCount || 1) === cnt
+                              ? 'bg-amber-600 text-white border-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                              : 'bg-[#12131b] text-zinc-400 hover:text-white border-zinc-800 hover:bg-zinc-800'
+                          }`}
+                          title={`Нажимать ${cnt} раз(а) подряд`}
+                        >
+                          {cnt}×
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Быстрые кнопки пресетов */}
-              <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                <span className="text-[9px] text-zinc-500">Быстро:</span>
-                {[0, 3, 6, 8, 12, 15, 20, 24, 30].map((sec) => (
-                  <button
-                    key={sec}
-                    type="button"
-                    onClick={() => setDraftStep(prev => ({ ...prev, skillCooldownSeconds: sec }))}
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition cursor-pointer border ${
-                      draftStep.skillCooldownSeconds === sec
-                        ? draftStep.independent
-                          ? 'bg-blue-900/80 text-white border-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
-                          : 'bg-[#1e1e28] text-white border-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.2)]'
-                        : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white hover:bg-zinc-700'
-                    }`}
-                  >
-                    {sec}с
-                  </button>
-                ))}
-              </div>
+              {/* RIGHT COLUMN: Тип запуска (Обычный / Постоянно) и КД скилла */}
+              <div className="flex flex-col gap-2">
+                {/* 1. Тип запуска: Обычный / Постоянно */}
+                <div className="flex flex-col gap-1.5 bg-[#06070a]/90 p-2 rounded-xl border border-zinc-800/80">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] text-zinc-400 font-medium">
+                      Тип запуска скилла
+                    </label>
+                    {draftStep.independent ? (
+                      <span className="text-[8.5px] font-bold text-blue-400 bg-blue-950/80 px-1.5 py-0.2 rounded border border-blue-500/60 shadow-[0_0_6px_rgba(59,130,246,0.2)]">
+                        Постоянно по КД
+                      </span>
+                    ) : (
+                      <span className="text-[8.5px] text-zinc-500 bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800">
+                        По очереди
+                      </span>
+                    )}
+                  </div>
 
-              {/* Подсказка */}
-              <div className={`p-1.5 rounded-md border text-[9.5px] leading-tight flex items-start gap-1 mt-0.5 ${
-                draftStep.independent
-                  ? 'bg-blue-950/40 border-blue-800/60 text-blue-200'
-                  : 'bg-zinc-900 border border-zinc-700/60 text-zinc-300'
-              }`}>
-                <span className="shrink-0 text-zinc-400">⏱</span>
-                <span>
-                  {draftStep.independent
-                    ? `Скилл нажимается постоянно по своему КД (${draftStep.skillCooldownSeconds || 0}с) независимо от остальной комбинации.`
-                    : draftStep.skillCooldownSeconds > 0
-                    ? `Скилл нажимается по очереди в комбинации с проверкой КД (${draftStep.skillCooldownSeconds}с).`
-                    : 'Скилл нажимается строго по очереди в комбинации.'}
-                </span>
+                  <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-[#0e0f17] border border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setDraftStep(prev => ({ ...prev, independent: false }))}
+                      className={`py-1 px-1.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center justify-center gap-1 ${
+                        !draftStep.independent
+                          ? 'bg-zinc-800 text-white border border-zinc-600 shadow-[0_0_10px_rgba(255,255,255,0.12)]'
+                          : 'text-zinc-400 hover:text-zinc-200 border border-transparent hover:bg-zinc-800/40'
+                      }`}
+                    >
+                      <span>Обычный</span>
+                      <span className="text-[8px] opacity-70 font-normal">(в очереди)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraftStep(prev => ({
+                        ...prev,
+                        independent: true,
+                        skillCooldownSeconds: (!prev.skillCooldownSeconds || prev.skillCooldownSeconds === 0) ? 6 : prev.skillCooldownSeconds,
+                      }))}
+                      className={`py-1 px-1.5 rounded-md text-[10px] font-semibold transition cursor-pointer flex items-center justify-center gap-1 ${
+                        draftStep.independent
+                          ? 'bg-blue-600 text-white border border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.45)]'
+                          : 'text-zinc-400 hover:text-blue-300 border border-transparent hover:bg-blue-950/30'
+                      }`}
+                    >
+                      <span>⚡ Постоянно</span>
+                      <span className="text-[8px] opacity-80 font-normal">(по КД)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. КД скилла (сек) */}
+                <div className={`flex flex-col gap-1.5 p-2 rounded-xl border transition-all ${
+                  draftStep.independent
+                    ? 'bg-[#0a0f1d] border-blue-500/60 shadow-[inset_0_0_12px_rgba(59,130,246,0.06)]'
+                    : 'bg-[#06070a]/90 border-zinc-700/80 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]'
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-[10px] text-zinc-200 font-semibold shrink-0 flex items-center gap-1.5">
+                      <Clock className={`w-3.5 h-3.5 ${draftStep.independent ? 'text-blue-400' : 'text-zinc-400'}`} />
+                      <span>КД скилла (сек)</span>
+                    </label>
+                    <div className="flex items-center gap-1 bg-[#12131b] px-2 py-0.5 rounded-md border border-zinc-700/80 focus-within:border-zinc-400">
+                      <input
+                        type="number"
+                        min="0"
+                        max="300"
+                        step="1"
+                        value={draftStep.skillCooldownSeconds}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                          setDraftStep(prev => ({ ...prev, skillCooldownSeconds: val }));
+                        }}
+                        className={`w-11 bg-transparent text-center font-mono font-bold text-[11px] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                          draftStep.independent ? 'text-blue-200 font-black' : 'text-zinc-100'
+                        }`}
+                      />
+                      <span className="text-[9px] text-zinc-400 font-mono">сек</span>
+                    </div>
+                  </div>
+
+                  {/* Быстрые кнопки пресетов */}
+                  <div className="flex flex-wrap items-center gap-1 pt-0.2">
+                    <span className="text-[8px] text-zinc-500">Пресет:</span>
+                    {[0, 3, 6, 8, 12, 15, 20, 24, 30].map((sec) => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => setDraftStep(prev => ({ ...prev, skillCooldownSeconds: sec }))}
+                        className={`px-1.5 py-0.2 rounded text-[8.5px] font-mono font-bold transition cursor-pointer border ${
+                          draftStep.skillCooldownSeconds === sec
+                            ? draftStep.independent
+                              ? 'bg-blue-900/80 text-white border-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
+                              : 'bg-[#1e1e28] text-white border-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.2)]'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700/60 hover:text-white hover:bg-zinc-700'
+                        }`}
+                      >
+                        {sec}с
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Подсказка */}
+                  <div className={`p-1 rounded-md border text-[8.5px] leading-tight flex items-start gap-1 mt-0.2 ${
+                    draftStep.independent
+                      ? 'bg-blue-950/40 border-blue-800/60 text-blue-200'
+                      : 'bg-zinc-900 border border-zinc-700/60 text-zinc-300'
+                  }`}>
+                    <span className="shrink-0 text-zinc-400">⏱</span>
+                    <span className="truncate">
+                      {draftStep.independent
+                        ? `Постоянно по своему КД (${draftStep.skillCooldownSeconds || 0}с).`
+                        : draftStep.skillCooldownSeconds > 0
+                        ? `В очереди с проверкой КД (${draftStep.skillCooldownSeconds}с).`
+                        : 'Строго по очереди в комбинации.'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Footer Buttons: Отмена / Сохранить шаг */}
-            <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/80 mt-0.5">
-              <button
-                type="button"
-                onClick={() => setEditingStep(null)}
-                className="flex-1 py-1 px-2 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] font-medium border border-zinc-700/80 transition cursor-pointer"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveStep}
-                className="flex-1 py-1.5 px-2 rounded-lg bg-[#181822] hover:bg-[#22222e] text-zinc-100 hover:text-white text-[11px] font-medium border border-zinc-600 hover:border-zinc-300 shadow-[0_0_12px_rgba(255,255,255,0.18)] transition cursor-pointer"
-              >
-                Сохранить шаг
-              </button>
+            {/* Footer Buttons: Horizontal bar */}
+            <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 mt-0.5">
+              <div className="text-[9.5px] text-zinc-400 hidden sm:flex items-center gap-1.5">
+                <span className="text-zinc-500">💡</span>
+                <span>Нажмите любую клавишу — старая сразу заменится без стирания</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setEditingStep(null)}
+                  className="flex-1 sm:flex-initial py-1.5 px-3 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] font-medium border border-zinc-700/80 transition cursor-pointer"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveStep}
+                  className="flex-1 sm:flex-initial py-1.5 px-4 rounded-lg bg-[#181822] hover:bg-[#22222e] text-zinc-100 hover:text-white text-[11px] font-semibold border border-zinc-600 hover:border-zinc-300 shadow-[0_0_12px_rgba(255,255,255,0.18)] transition cursor-pointer"
+                >
+                  Сохранить шаг
+                </button>
+              </div>
             </div>
           </div>
         </div>
