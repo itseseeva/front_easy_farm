@@ -53,9 +53,12 @@ export interface VisionSettings {
   yellowUpper: [number, number, number];
 }
 
+export type FarmMode = 'pull' | 'normal';
+
 export interface BotStatusResponse {
   running: boolean;
   chat_running?: boolean;
+  farm_mode?: FarmMode;
   shutdown_mode: 'duration' | 'clock' | null;
   shutdown_minutes: number | null;
   shutdown_deadline_ms: number | null;
@@ -98,6 +101,14 @@ declare global {
         start_bot(): Promise<{ ok: boolean; error?: string }>;
         stop_bot(): Promise<{ ok: boolean; error?: string }>;
         get_status?(): Promise<BotStatusResponse>;
+        get_farm_mode?(): Promise<{ ok: boolean; farm_mode?: FarmMode; error?: string }>;
+        set_farm_mode?(mode: FarmMode): Promise<{
+          ok: boolean;
+          farm_mode?: FarmMode;
+          applies?: 'now' | 'next_start';
+          message?: string;
+          error?: string;
+        }>;
         set_shutdown_duration?(minutes: number): Promise<BotStatusResponse>;
         set_shutdown_timer?(deadlineMs: number): Promise<BotStatusResponse>;
         cancel_shutdown_timer?(): Promise<BotStatusResponse>;

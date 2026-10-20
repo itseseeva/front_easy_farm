@@ -4,7 +4,8 @@ import { ComboSequence } from './components/ComboSequence';
 import { ShutdownTimer } from './components/ShutdownTimer';
 import { SessionSummaryModal } from './components/SessionSummaryModal';
 import { ChatBotToggle } from './components/ChatBotToggle';
-import { SessionSummaryData } from './types';
+import { FarmModeSwitch } from './components/FarmModeSwitch';
+import { SessionSummaryData, FarmMode } from './types';
 import {
   Play,
   Square,
@@ -48,6 +49,9 @@ export const App: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Farm mode: 'pull' (Агр мобов) or 'normal' (Обычный)
+  const [farmMode, setFarmMode] = useState<FarmMode>('pull');
 
   // New features: Session Summary & Chat Bot
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryData | null>(null);
@@ -109,6 +113,9 @@ export const App: React.FC = () => {
             }
             if (typeof res.chat_running === 'boolean') {
               setIsChatRunning(res.chat_running);
+            }
+            if (res.farm_mode === 'pull' || res.farm_mode === 'normal') {
+              setFarmMode(res.farm_mode);
             }
           }
         } catch (err) {
@@ -467,6 +474,15 @@ export const App: React.FC = () => {
               onChatStateChange={setIsChatRunning}
               onError={setErrorMessage}
               onSuccess={setSuccessMessage}
+            />
+
+            {/* Farm Mode Switcher: Агр мобов / Обычный (рядом с Чат-бот) */}
+            <FarmModeSwitch
+              isBotRunning={isBotRunning}
+              serverFarmMode={farmMode}
+              onFarmModeChange={setFarmMode}
+              onToast={setSuccessMessage}
+              onError={setErrorMessage}
             />
 
             {/* Start / Stop Button */}
